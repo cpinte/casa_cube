@@ -1,20 +1,17 @@
+import os
+import numpy as np
 from astropy.io import fits
 import scipy.constants as sc
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from matplotlib.patches import Ellipse
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-import matplotlib as mpl
-import numpy as np
-import os
-
 from astropy.convolution import Gaussian2DKernel, convolve, convolve_fft
-
-FWHM_to_sigma = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2)))
-
-
 import scipy.ndimage
 
+
+FWHM_to_sigma = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2)))
 arcsec = np.pi / 648000
 default_cmap = "inferno"
 
@@ -44,9 +41,7 @@ class Cube:
             # pixel info
             self.nx = hdu[0].header['NAXIS1']
             self.ny = hdu[0].header['NAXIS2']
-            self.pixelscale = (
-                hdu[0].header['CDELT2'] * 3600.0
-            )  # arcsec : we assume square pixels
+            self.pixelscale = hdu[0].header['CDELT2'] * 3600 # arcsec
             self.cx = hdu[0].header['CRPIX1']
             self.cy = hdu[0].header['CRPIX2']
             self.x_ref = hdu[0].header['CRVAL1']  # coordinate
@@ -76,28 +71,17 @@ class Cube:
                 self.CRPIX3 = hdu[0].header['CRPIX3']
                 self.CRVAL3 = hdu[0].header['CRVAL3']
                 self.CDELT3 = hdu[0].header['CDELT3']
-                if self.velocity_type == "VELO-LSR":  # gildas format m/s -> km/s
-                    self.velocity = self.CRVAL3 + self.CDELT3 * (
-                        np.arange(1, self.nv + 1) - self.CRPIX3
-                    )  # km/s
+                if self.velocity_type == "VELO-LSR": # gildas
+                    self.velocity = self.CRVAL3 + self.CDELT3 * (np.arange(1, self.nv + 1) - self.CRPIX3)
                     self.nu = self.restfreq * (1 - self.velocity * 1000 / sc.c)
                 elif self.velocity_type == "VRAD":  # casa format : v en km/s
-                    self.velocity = (
-                        self.CRVAL3
-                        + self.CDELT3 * (np.arange(1, self.nv + 1) - self.CRPIX3)
-                    ) / 1000
+                    self.velocity = (self.CRVAL3 + self.CDELT3 * (np.arange(1, self.nv + 1) - self.CRPIX3)) / 1000
                     self.nu = self.restfreq * (1 - self.velocity * 1000 / sc.c)
-                elif self.velocity_type == "FREQ":
-                    self.nu = self.CRVAL3 + self.CDELT3 * (
-                        np.arange(1, self.nv + 1) - self.CRPIX3
-                    )  # Hz : tested ok
-                    self.velocity = (
-                        -(self.nu - self.restfreq) / self.restfreq * sc.c / 1000.0
-                    )  # km/s
+                elif self.velocity_type == "FREQ": # Hz
+                    self.nu = self.CRVAL3 + self.CDELT3 * (np.arange(1, self.nv + 1) - self.CRPIX3)
+                    self.velocity = (-(self.nu - self.restfreq) / self.restfreq * sc.c / 1000.0)  # km/s
                 else:
-                    raise ValueError(
-                        "Velocity type is not recognised:", self.velocity_type
-                    )
+                    raise ValueError("Velocity type is not recognised:", self.velocity_type)
             except:
                 pass
 
