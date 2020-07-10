@@ -17,19 +17,15 @@ default_cmap = "inferno"
 
 
 class Cube:
-    def __init__(self, filename, **kwargs):
+    def __init__(self, filename, only_header=False, **kwargs):
 
         self.filename = os.path.normpath(os.path.expanduser(filename))
-        self._read(**kwargs)
+        self._read(**kwargs, only_header=only_header)
 
-    def _read(self):
+    def _read(self, only_header=False):
         try:
             hdu = fits.open(self.filename)
             self.header = hdu[0].header
-            self.image = np.ma.masked_array(hdu[0].data)
-
-            if self.image.ndim == 4:
-                self.image = self.image[0, :, :, :]
 
             # Read a few keywords in header
             try:
@@ -87,14 +83,21 @@ class Cube:
 
             # beam
             try:
-                self.bmaj = hdu[0].header['BMAJ'] * 3600.0  # arcsec
-                self.bmin = hdu[0].header['BMIN'] * 3600.0
+                self.bmaj = hdu[0].header['BMAJ'] * 3600 # arcsec
+                self.bmin = hdu[0].header['BMIN'] * 3600
                 self.bpa = hdu[0].header['BPA']
             except:
                 # make an average of all the records ...
                 self.bmaj = hdu[1].data[0][0]
                 self.bmin = hdu[1].data[0][1]
                 self.bpa = hdu[1].data[0][2]
+
+            # reading data
+            if not only_header:
+                self.image = np.ma.masked_array(hdu[0].data)
+
+                if self.image.ndim == 4:
+                    self.image = self.image[0, :, :, :]
 
             hdu.close()
         except OSError:
