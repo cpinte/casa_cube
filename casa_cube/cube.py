@@ -17,12 +17,12 @@ default_cmap = "inferno"
 
 
 class Cube:
-    def __init__(self, filename, only_header=False, **kwargs):
+    def __init__(self, filename, only_header=False, correct_fct=None, **kwargs):
 
         self.filename = os.path.normpath(os.path.expanduser(filename))
-        self._read(**kwargs, only_header=only_header)
+        self._read(**kwargs, only_header=only_header, correct_fct=correct_fct)
 
-    def _read(self, only_header=False):
+    def _read(self, only_header=False,correct_fct=None):
         try:
             hdu = fits.open(self.filename)
             self.header = hdu[0].header
@@ -99,10 +99,16 @@ class Cube:
                 if self.image.ndim == 4:
                     self.image = self.image[0, :, :, :]
 
+                if correct_fct is not None:
+                    self.image *= correct_fct[:,np.newaxis, np.newaxis]
+
             hdu.close()
         except OSError:
             print('cannot open', self.filename)
             return ValueError
+
+    def writeto(self,filename, **kwargs):
+        fits.writeto(os.path.normpath(os.path.expanduser(filename)),self.image.data, self.header, **kwargs)
 
     def plot(
         self,
@@ -341,6 +347,10 @@ class Cube:
 
         return image
 
+    def plot_line(self,**kwargs):
+        plt.plot(self.velocity, np.sum(self.image[:,:,:], axis=(1,2)), **kwargs)
+
+
     # -- computing various "moments"
     def get_moment_map(self, moment=0, v0=0, M0_threshold=None):
         """
@@ -348,7 +358,7 @@ class Cube:
         This returns the moment maps in physical units, ie:
          - M0 is the integrated line flux (Jy/beam . km/s)
          - M1 is the average velocity [km/s]
-         - M2 is the velocity dispersion [km/s]
+         - M2 is the velocity dispersion [(km/s)**2]
         """
 
         if v0 is None:
@@ -358,8 +368,8 @@ class Cube:
         dv = self.velocity[1] - self.velocity[0]
         v = self.velocity - v0
 
-        if moment <= 2:
-            M0 = np.sum(cube, axis=0) * np.abs(dv)
+
+        M0 = np.sum(cube, axis=0) * np.abs(dv)
 
         if M0_threshold is not None:
             M0 = np.ma.masked_less(M0, M0_threshold)
@@ -390,10 +400,15 @@ class Cube:
 
         if moment == 8:
             M8 = np.max(cube, axis=0)
+            if M0_threshold is not None:
+                M8 = np.ma.masked_where(M0 < M0_threshold, M8)
             return M8
 
         if moment == 9:
             M9 = self.velocity[0] + dv * np.argmax(cube, axis=0)
+            if M0_threshold is not None:
+                M9 = np.ma.masked_where(M0 < M0_threshold, M9)
+
             return M9
 
     # -- Functions to deal the synthesized beam.
@@ -422,9 +437,8 @@ class Cube:
         im2 = np.nan_to_num(im)
         nu = self.restfreq
 
-        exp_m1 = (
-            1e26 * self._beam_area_str() * 2.0 * sc.h * nu ** 3 / (sc.c ** 2 * abs(im2))
-        )
+        exp_m1 = 1e26 * self._beam_area_str() * 2.0 * sc.h * nu ** 3 / (sc.c ** 2 * abs(im2))
+
         hnu_kT = np.log1p(exp_m1 + 1e-10)
         Tb = sc.h * nu / (sc.k * hnu_kT)
 
