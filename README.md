@@ -1,6 +1,8 @@
 # casa_cube
 
-casa_cube is a python package that provides an interface to data cubes generates by CASA or Gildas
+casa_cube is a python package that provides an interface to data cubes generates by CASA or Gildas.
+It allows the user to perform simple tasks such plotting given channel maps, moment maps, line profile in various units, correcting for cloud extinction, reconvolving with a beam taper, ...
+The syntax is similar to pymcfost to perform quick and easy comparison with models.
 
 ## Installation:
 
