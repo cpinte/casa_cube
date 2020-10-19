@@ -17,12 +17,12 @@ default_cmap = "inferno"
 
 
 class Cube:
-    def __init__(self, filename, only_header=False, correct_fct=None, **kwargs):
+    def __init__(self, filename, only_header=False, correct_fct=None, threshold=None, **kwargs):
 
         self.filename = os.path.normpath(os.path.expanduser(filename))
-        self._read(**kwargs, only_header=only_header, correct_fct=correct_fct)
+        self._read(**kwargs, only_header=only_header, correct_fct=correct_fct, threshold=threshold)
 
-    def _read(self, only_header=False,correct_fct=None):
+    def _read(self, only_header=False, correct_fct=None, threshold=None):
         try:
             hdu = fits.open(self.filename)
             self.header = hdu[0].header
@@ -99,6 +99,9 @@ class Cube:
                 if self.image.ndim == 4:
                     self.image = self.image[0, :, :, :]
 
+                if threshold is not None:
+                    self.image = np.where(self.image > threshold, self.image, 0)
+
                 if correct_fct is not None:
                     self.image *= correct_fct[:,np.newaxis, np.newaxis]
 
@@ -122,6 +125,7 @@ class Cube:
         limit=None,
         limits=None,
         moment=None,
+        vturb = True,
         Tb=False,
         cmap=None,
         v0=None,
@@ -139,9 +143,11 @@ class Cube:
         taper=None,
         colorbar_label=True,
         M0_threshold=None,
+        threshold = None,
         vlabel_position="bottom",
         shift_dx=0,
         shift_dy=0,
+        mol_weight=None
     ):
 
         if ax is None:
@@ -160,8 +166,13 @@ class Cube:
             _color_scale = 'log'
         elif moment is not None:
             is_cont = False
-            im = self.get_moment_map(moment=moment, v0=v0, M0_threshold=M0_threshold)
+            im = self.get_moment_map(moment=moment, v0=v0, M0_threshold=M0_threshold, threshold=threshold)
             _color_scale = 'lin'
+        elif vturb:
+            is_cont = False
+            im = self.get_vturb(M0_threshold=M0_threshold, threshold=threshold, mol_weight=mol_weight)
+            _color_scale = 'lin'
+
         else:
             is_cont = False
             # -- Selecting channel corresponding to a given velocity
@@ -169,7 +180,6 @@ class Cube:
                 v = v0 + dv
 
             if v is not None:
-                print(v)
                 iv = np.abs(self.velocity - v).argmin()
                 print("Selecting channel #", iv)
             im = self.image[iv, :, :]
@@ -254,7 +264,7 @@ class Cube:
             origin='lower',
             cmap=cmap,
             alpha=alpha,
-            interpolation="bicubic",
+            #interpolation="bicubic",
         )
 
         if limit is not None:
@@ -288,7 +298,7 @@ class Cube:
                 elif moment in [1, 9]:
                     cb.set_label("Velocity [km.s$^{-1}]$")
                 elif moment == 2:
-                    cb.set_label("Velocity dispersion [km$^2$.s$^{-2}$]")
+                    cb.set_label("Velocity dispersion [km.s$^{-1}$]")
                 else:
                     if Tb:
                         cb.set_label("T$_\mathrm{b}$ [" + formatted_unit + "]")
@@ -302,7 +312,7 @@ class Cube:
         else:
             y_vlabel = 0.1
         if not no_vlabel:
-            if (moment is None) and not is_cont:
+            if (moment is None) and not is_cont and not vturb:
                 if v0 is None:
                     ax.text(
                         0.5,
@@ -352,64 +362,71 @@ class Cube:
 
 
     # -- computing various "moments"
-    def get_moment_map(self, moment=0, v0=0, M0_threshold=None):
+    def get_moment_map(self, moment=0, v0=0, M0_threshold=None, threshold=None):
         """
         We use the same comvention as CASA : moment 8 is peak flux, moment 9 is peak velocity
         This returns the moment maps in physical units, ie:
          - M0 is the integrated line flux (Jy/beam . km/s)
          - M1 is the average velocity [km/s]
-         - M2 is the velocity dispersion [(km/s)**2]
+         - M2 is the velocity dispersion [km/s]
+         - M8 is the peak intensity
+         - M9 is the velocity of the peak
         """
 
         if v0 is None:
             v0 = 0
 
         cube = np.copy(self.image)
-        dv = self.velocity[1] - self.velocity[0]
+        dv = np.abs(self.velocity[1] - self.velocity[0])
         v = self.velocity - v0
 
+        if threshold is not None:
+            cube = np.where(cube > threshold, cube, 0)
 
-        M0 = np.sum(cube, axis=0) * np.abs(dv)
-
-        if M0_threshold is not None:
-            M0 = np.ma.masked_less(M0, M0_threshold)
+        M0 = np.sum(cube, axis=0) * dv
 
         if moment in [1, 2]:
-            M1 = (
-                np.sum(cube[:, :, :] * v[:, np.newaxis, np.newaxis], axis=0)
-                * np.abs(dv)
-                / M0
-            )
+            M1 = np.sum(cube[:, :, :] * v[:, np.newaxis, np.newaxis], axis=0) * dv / M0
 
         if moment == 0:
-            return M0
-        elif moment == 1:
-            return M1
+            M=M0
+
+        if  moment == 1:
+            M=M1
 
         if moment == 2:
-            M2 = np.sqrt(
-                np.sum(
-                    cube[:, :, :]
-                    * (v[:, np.newaxis, np.newaxis] - M1[np.newaxis, :, :]) ** 2,
-                    axis=0,
-                )
-                * np.abs(dv)
-                / M0
-            )
-            return M2
+            M = np.sqrt( np.sum(cube[:, :, :] * (v[:, np.newaxis, np.newaxis] - M1[np.newaxis, :, :]) ** 2, axis=0) * dv / M0 )
 
         if moment == 8:
-            M8 = np.max(cube, axis=0)
-            if M0_threshold is not None:
-                M8 = np.ma.masked_where(M0 < M0_threshold, M8)
-            return M8
+            M = np.max(cube, axis=0)
 
         if moment == 9:
-            M9 = self.velocity[0] + dv * np.argmax(cube, axis=0)
-            if M0_threshold is not None:
-                M9 = np.ma.masked_where(M0 < M0_threshold, M9)
+            M = self.velocity[0] + dv * np.argmax(cube, axis=0)
 
-            return M9
+        if M0_threshold is not None:
+            M = np.ma.masked_where(M0 < M0_threshold, M)
+
+        return M
+
+    def get_fwhm(self, v0=0, M0_threshold=None):
+
+        M2 = get_moment_map(self, moment=2, v0=v0, M0_threshold=M0_threshold)
+
+        return np.sqrt(8*np.log(2)) * M2
+
+    def get_vturb(self, v0=0, M0_threshold=None, threshold=None, mol_weight=None):
+
+        if mol_weight is None:
+            raise ValueError("mol_weight needs to be provided")
+
+        M2 = self.get_moment_map(moment=2, v0=v0, M0_threshold=M0_threshold, threshold=threshold)
+        Tb = self._Jybeam_to_Tb(self.get_moment_map(moment=8, v0=v0, M0_threshold=M0_threshold, threshold=threshold))
+
+        mH = 1.007825032231/sc.N_A
+        cs2 = sc.k * Tb / (mol_weight * mH)
+
+        return np.sqrt(8*np.log(2)* M2**2 - 2*cs2)
+
 
     # -- Functions to deal the synthesized beam.
     def _beam_area(self):
@@ -443,3 +460,23 @@ class Cube:
         Tb = sc.h * nu / (sc.k * hnu_kT)
 
         return np.ma.where(im2 >= 0.0, Tb, -Tb)
+
+
+    def make_cut(z, x0,y0,x1,y1,num=None):
+        """
+        Make a cut in image 'z' along a line between (x0,y0) and (x1,y1)
+        x0, y0,x1,y1 are pixel coordinates
+        """
+
+        if num is not None:
+            # Extract the values along the line, using cubic interpolation
+            x, y = np.linspace(x0, x1, num), np.linspace(y0, y1, num)
+            zi = scipy.ndimage.map_coordinates(z, np.vstack((x,y)))
+
+        else:
+            # Extract the values along the line at the pixel spacing
+            length = int(np.hypot(x1-x0, y1-y0))
+            x, y = np.linspace(x0, x1, length), np.linspace(y0, y1, length)
+            zi = z[x.astype(np.int), y.astype(np.int)]
+
+        return zi
