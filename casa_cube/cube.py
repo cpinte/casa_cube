@@ -99,6 +99,9 @@ class Cube:
                 if self.image.ndim == 4:
                     self.image = self.image[0, :, :, :]
 
+                if self.image.ndim == 3 and self.nv == 1:
+                    self.image = self.image[0, :, :]
+
                 if threshold is not None:
                     self.image = np.where(self.image > threshold, self.image, 0)
 
@@ -125,7 +128,7 @@ class Cube:
         limit=None,
         limits=None,
         moment=None,
-        vturb = True,
+        vturb = False,
         Tb=False,
         cmap=None,
         v0=None,
@@ -462,21 +465,24 @@ class Cube:
         return np.ma.where(im2 >= 0.0, Tb, -Tb)
 
 
-    def make_cut(z, x0,y0,x1,y1,num=None):
+    def make_cut(self, x0,y0,x1,y1,z=None,num=None):
         """
         Make a cut in image 'z' along a line between (x0,y0) and (x1,y1)
         x0, y0,x1,y1 are pixel coordinates
         """
 
+        if z is None:
+            z = self.image
+
         if num is not None:
             # Extract the values along the line, using cubic interpolation
             x, y = np.linspace(x0, x1, num), np.linspace(y0, y1, num)
-            zi = scipy.ndimage.map_coordinates(z, np.vstack((x,y)))
+            zi = scipy.ndimage.map_coordinates(z, np.vstack((y,x)))
 
         else:
             # Extract the values along the line at the pixel spacing
             length = int(np.hypot(x1-x0, y1-y0))
             x, y = np.linspace(x0, x1, length), np.linspace(y0, y1, length)
-            zi = z[x.astype(np.int), y.astype(np.int)]
+            zi = z[y.astype(np.int), x.astype(np.int)]
 
         return zi
