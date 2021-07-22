@@ -17,12 +17,12 @@ default_cmap = "inferno"
 
 
 class Cube:
-    def __init__(self, filename, only_header=False, correct_fct=None, threshold=None, **kwargs):
+    def __init__(self, filename, only_header=False, correct_fct=None, **kwargs):
 
         self.filename = os.path.normpath(os.path.expanduser(filename))
-        self._read(**kwargs, only_header=only_header, correct_fct=correct_fct, threshold=threshold)
+        self._read(**kwargs, only_header=only_header, correct_fct=correct_fct)
 
-    def _read(self, only_header=False, correct_fct=None, threshold=None):
+    def _read(self, only_header=False, correct_fct=None):
         try:
             hdu = fits.open(self.filename)
             self.header = hdu[0].header
@@ -43,9 +43,6 @@ class Cube:
             self.x_ref = hdu[0].header['CRVAL1']  # coordinate
             self.y_ref = hdu[0].header['CRVAL2']
             self.FOV = np.maximum(self.nx, self.ny) * self.pixelscale
-
-            halfsize = np.asarray([self.nx, self.ny]) / 2 * self.pixelscale
-            self.extent = [halfsize[0], -halfsize[0], -halfsize[1], halfsize[1]]
 
             # image axes : with 0, 0 assumed as the center of the image
             # (Need to add self.x_ref or y_ref for full coordinates)
@@ -102,9 +99,6 @@ class Cube:
                 if self.image.ndim == 3 and self.nv == 1:
                     self.image = self.image[0, :, :]
 
-                if threshold is not None:
-                    self.image = np.where(self.image > threshold, self.image, 0)
-
                 if correct_fct is not None:
                     self.image *= correct_fct[:,np.newaxis, np.newaxis]
 
@@ -147,18 +141,22 @@ class Cube:
         colorbar_label=True,
         M0_threshold=None,
         threshold = None,
+        threshold_value = np.NaN,
         vlabel_position="bottom",
+        vlabel_color="white",
         shift_dx=0,
         shift_dy=0,
-        mol_weight=None
+        mol_weight=None,
+        iv_support=None,
+        v_minmax = None,
+        axes_unit = "arcsec",
+        quantity_name=None
     ):
 
         if ax is None:
             ax = plt.gca()
 
         unit = self.unit
-        xlabel = r'$\Delta$ RA ["]'
-        ylabel = r'$\Delta$ Dec ["]'
 
         if self.nv == 1:  # continuum image
             is_cont = True
@@ -169,7 +167,7 @@ class Cube:
             _color_scale = 'log'
         elif moment is not None:
             is_cont = False
-            im = self.get_moment_map(moment=moment, v0=v0, M0_threshold=M0_threshold, threshold=threshold)
+            im = self.get_moment_map(moment=moment, v0=v0, M0_threshold=M0_threshold, threshold=threshold, iv_support=iv_support, v_minmax=v_minmax)
             _color_scale = 'lin'
         elif vturb:
             is_cont = False
@@ -185,8 +183,13 @@ class Cube:
             if v is not None:
                 iv = np.abs(self.velocity - v).argmin()
                 print("Selecting channel #", iv)
+
+            if iv is None:
+                print("Channel or velocity needed")
+                return ValueError
             im = self.image[iv, :, :]
             _color_scale = 'lin'
+
 
         if Tb:
             im = self._Jybeam_to_Tb(im)
@@ -259,11 +262,39 @@ class Cube:
             else:
                 cmap = default_cmap
 
-        # --- Making the actual plot
+
+        if axes_unit.lower() == 'arcsec':
+            pix_scale = self.pixelscale
+            xlabel = r'$\Delta$ RA ["]'
+            ylabel = r'$\Delta$ Dec ["]'
+            xaxis_factor = -1
+        elif axes_unit.lower() == 'au':
+            pix_scale = self.pixelscale * self.P.map.distance
+            xlabel = 'Distance from star [au]'
+            ylabel = 'Distance from star [au]'
+            xaxis_factor = 1
+        elif axes_unit.lower() == 'pixels' or axes_unit.lower() == 'pixel':
+            pix_scale = 1
+            xlabel = r'x [pix]'
+            ylabel = r'y [pix]'
+            xaxis_factor = 1
+        else:
+            raise ValueError("Unknown unit for axes_units: " + axes_unit)
+
+        halfsize = np.asarray(im.shape) / 2 * pix_scale
+        extent = [-halfsize[0]*xaxis_factor-shift_dx, halfsize[0]*xaxis_factor-shift_dx, -halfsize[1]-shift_dy, halfsize[1]-shift_dy]
+        if axes_unit.lower() == 'pixels' or axes_unit.lower() == 'pixel':
+            extent = None
+
+        self.extent = extent
+
+        if threshold is not None:
+            im = np.where(im > threshold, im, threshold_value)
+
         image = ax.imshow(
             im,
             norm=norm,
-            extent=self.extent - np.asarray([shift_dx, shift_dx, shift_dy, shift_dy]),
+            extent=extent,
             origin='lower',
             cmap=cmap,
             alpha=alpha,
@@ -295,6 +326,8 @@ class Cube:
             # cb = plt.colorbar(image,cax=cax, **kw)
             formatted_unit = unit.replace("-1", "$^{-1}$").replace("-2", "$^{-2}$")
 
+
+
             if colorbar_label:
                 if moment == 0:
                     cb.set_label("Flux [" + formatted_unit + ".km.s$^{-1}$]")
@@ -306,33 +339,45 @@ class Cube:
                     if Tb:
                         cb.set_label("T$_\mathrm{b}$ [" + formatted_unit + "]")
                     else:
-                        cb.set_label("Flux [" + formatted_unit + "]")
+                        if quantity_name is None:
+                            quantity_name = "Flux"
+                        cb.set_label(quantity_name+" [" + formatted_unit + "]")
             plt.sca(ax)  # we reset the main axis
 
         # -- Adding velocity
         if vlabel_position == "top":
             y_vlabel = 0.85
+            x_vlabel = 0.5
+        elif vlabel_position == "top-right":
+            y_vlabel = 0.85
+            x_vlabel = 0.7
+        elif vlabel_position == "top-left":
+            y_vlabel = 0.85
+            x_vlabel = 0.25
         else:
             y_vlabel = 0.1
+            x_vlabel = 0.5
         if not no_vlabel:
             if (moment is None) and not is_cont and not vturb:
                 if v0 is None:
                     ax.text(
-                        0.5,
+                        x_vlabel,
                         y_vlabel,
                         f"v={self.velocity[iv]:<4.2f}$\,$km/s",
                         horizontalalignment='center',
-                        color="white",
+                        color=vlabel_color,
                         transform=ax.transAxes,
+                        fontsize=8
                     )
                 else:
                     ax.text(
-                        0.5,
+                        x_vlabel,
                         y_vlabel,
                         f"$\Delta$v={self.velocity[iv] -v0:<4.2f}$\,$km/s",
                         horizontalalignment='center',
                         color="white",
                         transform=ax.transAxes,
+                        fontsize=8
                     )
 
         # --- Adding beam
@@ -360,12 +405,18 @@ class Cube:
 
         return image
 
-    def plot_line(self,**kwargs):
-        plt.plot(self.velocity, np.sum(self.image[:,:,:], axis=(1,2)), **kwargs)
+    def plot_line(self,x_axis="velocity", **kwargs):
+
+        if x_axis == "channel":
+            plt.plot(np.sum(self.image[:,:,:], axis=(1,2)), **kwargs)
+        elif x_axis == "freq":
+            plt.plot(self.nu, np.sum(self.image[:,:,:], axis=(1,2)), **kwargs)
+        else:
+            plt.plot(self.velocity, np.sum(self.image[:,:,:], axis=(1,2)), **kwargs)
 
 
     # -- computing various "moments"
-    def get_moment_map(self, moment=0, v0=0, M0_threshold=None, threshold=None):
+    def get_moment_map(self, moment=0, v0=0, M0_threshold=None, threshold=None, iv_support=None, v_minmax = None):
         """
         We use the same comvention as CASA : moment 8 is peak flux, moment 9 is peak velocity
         This returns the moment maps in physical units, ie:
@@ -385,6 +436,16 @@ class Cube:
 
         if threshold is not None:
             cube = np.where(cube > threshold, cube, 0)
+
+        if v_minmax is not None:
+            vmin = np.min(v_minmax)
+            vmax = np.max(v_minmax)
+            iv_support = np.array(np.where(np.logical_and((self.velocity > vmin),(self.velocity < vmax)))).ravel()
+            print("Selecting channels:", iv_support)
+
+        if iv_support is not None:
+            v = v[iv_support]
+            cube = cube[iv_support,:,:]
 
         M0 = np.sum(cube, axis=0) * dv
 
