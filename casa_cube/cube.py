@@ -122,6 +122,7 @@ class Cube:
         limit=None,
         limits=None,
         moment=None,
+        moment_fname=None,
         vturb = False,
         Tb=False,
         cmap=None,
@@ -152,6 +153,10 @@ class Cube:
         axes_unit = "arcsec",
         quantity_name=None
     ):
+        """
+        Plotting routine for continuum image, moment maps and channel maps.
+        """
+
 
         if ax is None:
             ax = plt.gca()
@@ -167,7 +172,11 @@ class Cube:
             _color_scale = 'log'
         elif moment is not None:
             is_cont = False
-            im = self.get_moment_map(moment=moment, v0=v0, M0_threshold=M0_threshold, threshold=threshold, iv_support=iv_support, v_minmax=v_minmax)
+            if moment_fname is not None:
+                hdu = fits.open(moment_fname)
+                im = hdu[0].data
+            else:
+                im = self.get_moment_map(moment=moment, v0=v0, M0_threshold=M0_threshold, threshold=threshold, iv_support=iv_support, v_minmax=v_minmax)
             _color_scale = 'lin'
         elif vturb:
             is_cont = False
@@ -447,10 +456,10 @@ class Cube:
             v = v[iv_support]
             cube = cube[iv_support,:,:]
 
-        M0 = np.sum(cube, axis=0) * dv
+        M0 = np.nansum(cube, axis=0) * dv
 
         if moment in [1, 2]:
-            M1 = np.sum(cube[:, :, :] * v[:, np.newaxis, np.newaxis], axis=0) * dv / M0
+            M1 = np.nansum(cube[:, :, :] * v[:, np.newaxis, np.newaxis], axis=0) * dv / M0
 
         if moment == 0:
             M=M0
@@ -459,13 +468,16 @@ class Cube:
             M=M1
 
         if moment == 2:
-            M = np.sqrt( np.sum(cube[:, :, :] * (v[:, np.newaxis, np.newaxis] - M1[np.newaxis, :, :]) ** 2, axis=0) * dv / M0 )
+            # avoid division by 0 or neg values in sqrt
+            thr = np.nanpercentile(M0[np.where(M0>0)],0.01)
+            M0[np.where(M0<thr)]=thr
+            M = np.sqrt(np.nansum(np.power(cube[:, :, :] * (v[:, np.newaxis, np.newaxis] - M1[np.newaxis, :, :]),2), axis=0) * dv / M0 )
 
         if moment == 8:
             M = np.max(cube, axis=0)
 
         if moment == 9:
-            M = self.velocity[0] + dv * np.argmax(cube, axis=0)
+            M = self.velocity[0] - dv * np.argmax(cube, axis=0)
 
         if M0_threshold is not None:
             M = np.ma.masked_where(M0 < M0_threshold, M)
