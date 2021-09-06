@@ -17,12 +17,12 @@ default_cmap = "inferno"
 
 
 class Cube:
-    def __init__(self, filename, only_header=False, correct_fct=None, **kwargs):
+    def __init__(self, filename, only_header=False, correct_fct=None, unit=None, **kwargs):
 
         self.filename = os.path.normpath(os.path.expanduser(filename))
-        self._read(**kwargs, only_header=only_header, correct_fct=correct_fct)
+        self._read(**kwargs, only_header=only_header, correct_fct=correct_fct, unit=unit)
 
-    def _read(self, only_header=False, correct_fct=None):
+    def _read(self, only_header=False, correct_fct=None, unit=None):
         try:
             hdu = fits.open(self.filename)
             self.header = hdu[0].header
@@ -32,7 +32,13 @@ class Cube:
                 self.object = hdu[0].header['OBJECT']
             except:
                 self.object = ""
-            self.unit = hdu[0].header['BUNIT']
+            try:
+                self.unit = hdu[0].header['BUNIT']
+            except:
+                self.unit = " "
+
+            if unit is not None:
+                self.unit=unit
 
             # pixel info
             self.nx = hdu[0].header['NAXIS1']
@@ -141,10 +147,12 @@ class Cube:
         taper=None,
         colorbar_label=True,
         M0_threshold=None,
+        M8_threshold=None,
         threshold = None,
         threshold_value = np.NaN,
         vlabel_position="bottom",
         vlabel_color="white",
+        vlabel_size=8,
         shift_dx=0,
         shift_dy=0,
         mol_weight=None,
@@ -176,7 +184,7 @@ class Cube:
                 hdu = fits.open(moment_fname)
                 im = hdu[0].data
             else:
-                im = self.get_moment_map(moment=moment, v0=v0, M0_threshold=M0_threshold, threshold=threshold, iv_support=iv_support, v_minmax=v_minmax)
+                im = self.get_moment_map(moment=moment, v0=v0, M0_threshold=M0_threshold, M8_threshold=M8_threshold, threshold=threshold, iv_support=iv_support, v_minmax=v_minmax)
             _color_scale = 'lin'
         elif vturb:
             is_cont = False
@@ -274,18 +282,18 @@ class Cube:
 
         if axes_unit.lower() == 'arcsec':
             pix_scale = self.pixelscale
-            xlabel = r'$\Delta$ RA ["]'
-            ylabel = r'$\Delta$ Dec ["]'
+            xlabel = r'$\Delta$ RA (")'
+            ylabel = r'$\Delta$ Dec (")'
             xaxis_factor = -1
         elif axes_unit.lower() == 'au':
             pix_scale = self.pixelscale * self.P.map.distance
-            xlabel = 'Distance from star [au]'
-            ylabel = 'Distance from star [au]'
+            xlabel = 'Distance from star (au)'
+            ylabel = 'Distance from star (au)'
             xaxis_factor = 1
         elif axes_unit.lower() == 'pixels' or axes_unit.lower() == 'pixel':
             pix_scale = 1
-            xlabel = r'x [pix]'
-            ylabel = r'y [pix]'
+            xlabel = r'x (pix)'
+            ylabel = r'y (pix)'
             xaxis_factor = 1
         else:
             raise ValueError("Unknown unit for axes_units: " + axes_unit)
@@ -339,18 +347,18 @@ class Cube:
 
             if colorbar_label:
                 if moment == 0:
-                    cb.set_label("Flux [" + formatted_unit + ".km.s$^{-1}$]")
+                    cb.set_label("Flux (" + formatted_unit + ".km.s$^{-1}$)")
                 elif moment in [1, 9]:
-                    cb.set_label("Velocity [km.s$^{-1}]$")
+                    cb.set_label("Velocity (km.s$^{-1})$")
                 elif moment == 2:
-                    cb.set_label("Velocity dispersion [km.s$^{-1}$]")
+                    cb.set_label("Velocity dispersion (km.s$^{-1}$)")
                 else:
                     if Tb:
-                        cb.set_label("T$_\mathrm{b}$ [" + formatted_unit + "]")
+                        cb.set_label("T$_\mathrm{b}$ (" + formatted_unit + ")")
                     else:
                         if quantity_name is None:
                             quantity_name = "Flux"
-                        cb.set_label(quantity_name+" [" + formatted_unit + "]")
+                        cb.set_label(quantity_name+" (" + formatted_unit + ")")
             plt.sca(ax)  # we reset the main axis
 
         # -- Adding velocity
@@ -376,7 +384,7 @@ class Cube:
                         horizontalalignment='center',
                         color=vlabel_color,
                         transform=ax.transAxes,
-                        fontsize=8
+                        fontsize=vlabel_size
                     )
                 else:
                     ax.text(
@@ -386,7 +394,7 @@ class Cube:
                         horizontalalignment='center',
                         color="white",
                         transform=ax.transAxes,
-                        fontsize=8
+                        fontsize=vlabel_size
                     )
 
         # --- Adding beam
@@ -425,13 +433,13 @@ class Cube:
 
 
     # -- computing various "moments"
-    def get_moment_map(self, moment=0, v0=0, M0_threshold=None, threshold=None, iv_support=None, v_minmax = None):
+    def get_moment_map(self, moment=0, v0=0, M0_threshold=None, M8_threshold=None, threshold=None, iv_support=None, v_minmax = None):
         """
         We use the same comvention as CASA : moment 8 is peak flux, moment 9 is peak velocity
         This returns the moment maps in physical units, ie:
          - M0 is the integrated line flux (Jy/beam . km/s)
-         - M1 is the average velocity [km/s]
-         - M2 is the velocity dispersion [km/s]
+         - M1 is the average velocity (km/s)
+         - M2 is the velocity dispersion (km/s)
          - M8 is the peak intensity
          - M9 is the velocity of the peak
         """
@@ -440,7 +448,7 @@ class Cube:
             v0 = 0
 
         cube = np.copy(self.image)
-        dv = np.abs(self.velocity[1] - self.velocity[0])
+        dv = (self.velocity[1] - self.velocity[0])
         v = self.velocity - v0
 
         if threshold is not None:
@@ -457,6 +465,7 @@ class Cube:
             cube = cube[iv_support,:,:]
 
         M0 = np.nansum(cube, axis=0) * dv
+        M8 = np.max(cube, axis=0)
 
         if moment in [1, 2]:
             M1 = np.nansum(cube[:, :, :] * v[:, np.newaxis, np.newaxis], axis=0) * dv / M0
@@ -474,13 +483,17 @@ class Cube:
             M = np.sqrt(np.nansum(np.power(cube[:, :, :] * (v[:, np.newaxis, np.newaxis] - M1[np.newaxis, :, :]),2), axis=0) * dv / M0 )
 
         if moment == 8:
-            M = np.max(cube, axis=0)
+            M = M8
 
         if moment == 9:
-            M = self.velocity[0] - dv * np.argmax(cube, axis=0)
+            M = v[0] + dv * np.argmax(cube, axis=0)
+            print(v)
 
         if M0_threshold is not None:
             M = np.ma.masked_where(M0 < M0_threshold, M)
+
+        if M8_threshold is not None:
+            M = np.ma.masked_where(M8 < M8_threshold, M)
 
         return M
 
@@ -522,7 +535,7 @@ class Cube:
 
     @property
     def beam(self):
-        """Returns the beam parameters in ["], ["], [deg]."""
+        """Returns the beam parameters in ("), ("), (deg)."""
         return self.bmaj, self.bmin, self.bpa
 
     def _Jybeam_to_Tb(self, im):
