@@ -70,10 +70,10 @@ class Cube:
                 self.CRPIX3 = hdu[0].header['CRPIX3']
                 self.CRVAL3 = hdu[0].header['CRVAL3']
                 self.CDELT3 = hdu[0].header['CDELT3']
-                if self.velocity_type == "VELO-LSR": # gildas
+                if self.velocity_type == "VELO-LSR": # gildas : assumes velocity in km/s
                     self.velocity = self.CRVAL3 + self.CDELT3 * (np.arange(1, self.nv + 1) - self.CRPIX3)
                     self.nu = self.restfreq * (1 - self.velocity * 1000 / sc.c)
-                elif self.velocity_type == "VRAD":  # casa format : v en km/s
+                elif self.velocity_type == "VRAD":  # casa format : v m/s -->  km/s
                     self.velocity = (self.CRVAL3 + self.CDELT3 * (np.arange(1, self.nv + 1) - self.CRPIX3)) / 1000
                     self.nu = self.restfreq * (1 - self.velocity * 1000 / sc.c)
                 elif self.velocity_type == "FREQ": # Hz
