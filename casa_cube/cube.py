@@ -2,7 +2,6 @@ import os
 import numpy as np
 from astropy.io import fits
 import scipy.constants as sc
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from matplotlib.patches import Ellipse
@@ -32,13 +31,19 @@ class Cube:
                 self.object = hdu[0].header['OBJECT']
             except:
                 self.object = ""
+
             try:
                 self.unit = hdu[0].header['BUNIT']
             except:
+                print("Warning : could not find unit")
                 self.unit = " "
 
             if unit is not None:
+                print("Warning : forcing unit")
                 self.unit=unit
+
+            if self.unit == "beam-1 Jy": # discminer format
+                self.unit = "Jy/beam"
 
             # pixel info
             self.nx = hdu[0].header['NAXIS1']
@@ -74,7 +79,11 @@ class Cube:
                     self.velocity = self.CRVAL3 + self.CDELT3 * (np.arange(1, self.nv + 1) - self.CRPIX3)
                     self.nu = self.restfreq * (1 - self.velocity * 1000 / sc.c)
                 elif self.velocity_type == "VRAD":  # casa format : v m/s -->  km/s
-                    self.velocity = (self.CRVAL3 + self.CDELT3 * (np.arange(1, self.nv + 1) - self.CRPIX3)) / 1000
+                    if self.CDELT3 < 10: # assuming km/s
+                        factor = 1
+                    else: # assuming m/s
+                        factor = 1e-3
+                    self.velocity = (self.CRVAL3 + self.CDELT3 * (np.arange(1, self.nv + 1) - self.CRPIX3)) * factor # km/s
                     self.nu = self.restfreq * (1 - self.velocity * 1000 / sc.c)
                 elif self.velocity_type == "FREQ": # Hz
                     self.nu = self.CRVAL3 + self.CDELT3 * (np.arange(1, self.nv + 1) - self.CRPIX3)
@@ -107,7 +116,6 @@ class Cube:
 
                 if correct_fct is not None:
                     self.image *= correct_fct[:,np.newaxis, np.newaxis]
-
             hdu.close()
         except OSError:
             print('cannot open', self.filename)
@@ -121,6 +129,7 @@ class Cube:
         iv=None,
         v=None,
         colorbar=True,
+        colorbar_extend="neither",
         plot_beam=True,
         color_scale=None,
         fmin=None,
@@ -209,8 +218,12 @@ class Cube:
 
 
         if Tb:
-            im = self._Jybeam_to_Tb(im)
-            unit = "K"
+            if unit == "Jy/beam":
+                im = self._Jybeam_to_Tb(im)
+                unit = "K"
+            else:
+                print("Unknown unit, don't know kow to convert to Tb")
+                return ValueError
             _color_scale = 'lin'
 
         # --- Convolution by taper
@@ -337,7 +350,7 @@ class Cube:
         if colorbar:
             divider = make_axes_locatable(ax)
             cax = divider.append_axes("right", size="5%", pad=0.05)
-            cb = plt.colorbar(image, cax=cax)
+            cb = plt.colorbar(image, cax=cax, extend=colorbar_extend)
 
             # cax,kw = mpl.colorbar.make_axes(ax)
             # cb = plt.colorbar(image,cax=cax, **kw)
@@ -354,7 +367,7 @@ class Cube:
                     cb.set_label("Velocity dispersion (km.s$^{-1}$)")
                 else:
                     if Tb:
-                        cb.set_label("T$_\mathrm{b}$ (" + formatted_unit + ")")
+                        cb.set_label("T$_\mathrm{B}$ (" + formatted_unit + ")")
                     else:
                         if quantity_name is None:
                             quantity_name = "Flux"
@@ -479,7 +492,7 @@ class Cube:
         if moment == 2:
             # avoid division by 0 or neg values in sqrt
             thr = np.nanpercentile(M0[np.where(M0>0)],0.01)
-            M0[np.where(M0<thr)]=thr
+            M0[np.where(M0<thr)]=np.nan
             M = np.sqrt(np.nansum(np.power(cube[:, :, :] * (v[:, np.newaxis, np.newaxis] - M1[np.newaxis, :, :]),2), axis=0) * dv / M0 )
 
         if moment == 8:
