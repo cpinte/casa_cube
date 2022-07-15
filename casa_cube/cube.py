@@ -16,12 +16,12 @@ default_cmap = "inferno"
 
 
 class Cube:
-    def __init__(self, filename, only_header=False, correct_fct=None, unit=None, **kwargs):
+    def __init__(self, filename, only_header=False, correct_fct=None, unit=None, pixelscale=None, **kwargs):
 
         self.filename = os.path.normpath(os.path.expanduser(filename))
-        self._read(**kwargs, only_header=only_header, correct_fct=correct_fct, unit=unit)
+        self._read(**kwargs, only_header=only_header, correct_fct=correct_fct, unit=unit, pixelscale=pixelscale)
 
-    def _read(self, only_header=False, correct_fct=None, unit=None):
+    def _read(self, only_header=False, correct_fct=None, unit=None, pixelscale=None):
         try:
             hdu = fits.open(self.filename)
             self.header = hdu[0].header
@@ -48,11 +48,23 @@ class Cube:
             # pixel info
             self.nx = hdu[0].header['NAXIS1']
             self.ny = hdu[0].header['NAXIS2']
-            self.pixelscale = hdu[0].header['CDELT2'] * 3600 # arcsec
-            self.cx = hdu[0].header['CRPIX1']
-            self.cy = hdu[0].header['CRPIX2']
-            self.x_ref = hdu[0].header['CRVAL1']  # coordinate
-            self.y_ref = hdu[0].header['CRVAL2']
+            try:
+                self.pixelscale = hdu[0].header['CDELT2'] * 3600 # arcsec
+                self.cx = hdu[0].header['CRPIX1']
+                self.cy = hdu[0].header['CRPIX2']
+                self.x_ref = hdu[0].header['CRVAL1']  # coordinate
+                self.y_ref = hdu[0].header['CRVAL2']
+            except:
+                print("Warning: missing WCS")
+                self.cx = self.nx//2 + 1
+                self.cy = self.ny//2 + 1
+                self.x_ref = 0
+                self.y_ref = 0
+                print(pixelscale)
+                if pixelscale is None:
+                    raise ValueError("please provide pixelscale")
+                self.pixelscale = pixelscale
+
             self.FOV = np.maximum(self.nx, self.ny) * self.pixelscale
 
             # image axes : with 0, 0 assumed as the center of the image
@@ -67,9 +79,13 @@ class Cube:
                 self.nv = 1
             try:
                 self.restfreq = hdu[0].header['RESTFRQ']
+                self.wl = sc.c / self.restfreq
             except:
-                self.restfreq = hdu[0].header['RESTFREQ']  # gildas format
-            self.wl = sc.c / self.restfreq
+                try:
+                    self.restfreq = hdu[0].header['RESTFREQ']  # gildas format
+                    self.wl = sc.c / self.restfreq
+                except:
+                    print("Warning : missing rest frequency")
             try:
                 self.velocity_type = hdu[0].header['CTYPE3']
                 self.CRPIX3 = hdu[0].header['CRPIX3']
@@ -90,8 +106,9 @@ class Cube:
                     self.velocity = (-(self.nu - self.restfreq) / self.restfreq * sc.c / 1000.0)  # km/s
                 else:
                     raise ValueError("Velocity type is not recognised:", self.velocity_type)
+                self.is_V = True
             except:
-                pass
+                self.is_V = False
 
             # beam
             try:
@@ -99,10 +116,16 @@ class Cube:
                 self.bmin = hdu[0].header['BMIN'] * 3600
                 self.bpa = hdu[0].header['BPA']
             except:
-                # make an average of all the records ...
-                self.bmaj = hdu[1].data[0][0]
-                self.bmin = hdu[1].data[0][1]
-                self.bpa = hdu[1].data[0][2]
+                try:
+                    # make an average of all the records ...
+                    self.bmaj = hdu[1].data[0][0]
+                    self.bmin = hdu[1].data[0][1]
+                    self.bpa = hdu[1].data[0][2]
+                except:
+                    print("Warning : missing beam")
+                    self.bmaj = 0
+                    self.bmin = 0
+                    self.bpa = 0
 
             # reading data
             if not only_header:
@@ -147,8 +170,10 @@ class Cube:
         no_ylabel=False,
         no_xlabel=False,
         no_vlabel=False,
+        no_clabel=False,
         title=None,
         alpha=1.0,
+            interpolation=None,
         resample=0,
         bmaj=None,
         bmin=None,
@@ -168,7 +193,8 @@ class Cube:
         iv_support=None,
         v_minmax = None,
         axes_unit = "arcsec",
-        quantity_name=None
+        quantity_name=None,
+        stellar_mask = None
     ):
         """
         Plotting routine for continuum image, moment maps and channel maps.
@@ -201,29 +227,36 @@ class Cube:
             _color_scale = 'lin'
 
         else:
-            is_cont = False
-            # -- Selecting channel corresponding to a given velocity
-            if dv is not None:
-                v = v0 + dv
+            if self.is_V:
+                is_cont = False
+                # -- Selecting channel corresponding to a given velocity
+                if dv is not None:
+                    v = v0 + dv
 
-            if v is not None:
-                iv = np.abs(self.velocity - v).argmin()
-                print("Selecting channel #", iv)
+                if v is not None:
+                    iv = np.abs(self.velocity - v).argmin()
+                    print("Selecting channel #", iv)
 
-            if iv is None:
-                print("Channel or velocity needed")
-                return ValueError
+                if iv is None:
+                    print("Channel or velocity needed")
+                    return ValueError
+            else:
+                is_cont = True
+
             im = self.image[iv, :, :]
             _color_scale = 'lin'
 
 
         if Tb:
-            if unit == "Jy/beam":
-                im = self._Jybeam_to_Tb(im)
-                unit = "K"
-            else:
-                print("Unknown unit, don't know kow to convert to Tb")
-                return ValueError
+            print(unit)
+            im = self._Jybeam_to_Tb(im)
+            unit = "K"
+            #if unit == "Jy/beam":
+            #    im = self._Jybeam_to_Tb(im)
+            #    unit = "K"
+            #else:
+            #    print("Unknown unit, don't know kow to convert to Tb")
+            #    return ValueError
             _color_scale = 'lin'
 
         # --- Convolution by taper
@@ -328,7 +361,7 @@ class Cube:
             origin='lower',
             cmap=cmap,
             alpha=alpha,
-            #interpolation="bicubic",
+            interpolation=interpolation
         )
 
         if limit is not None:
@@ -355,7 +388,6 @@ class Cube:
             # cax,kw = mpl.colorbar.make_axes(ax)
             # cb = plt.colorbar(image,cax=cax, **kw)
             formatted_unit = unit.replace("-1", "$^{-1}$").replace("-2", "$^{-2}$")
-
 
 
             if colorbar_label:
@@ -433,6 +465,19 @@ class Cube:
             )
             ax.add_patch(beam)
 
+        # Adding mask to hide star
+        if stellar_mask is not None:
+            dx = 0.5
+            dy = 0.5
+            mask = Ellipse(
+                ax.transLimits.inverted().transform((dx, dy)),
+                width=2 * stellar_mask,
+                height=2 * stellar_mask,
+                fill=True,
+                color='grey',
+            )
+            ax.add_patch(mask)
+
         return image
 
     def plot_line(self,x_axis="velocity", **kwargs):
@@ -487,7 +532,7 @@ class Cube:
             M=M0
 
         if  moment == 1:
-            M=M1
+            M=M1 + v0
 
         if moment == 2:
             # avoid division by 0 or neg values in sqrt
