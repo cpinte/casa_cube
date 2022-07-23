@@ -36,7 +36,7 @@ class Cube:
                 self.unit = hdu[0].header['BUNIT']
             except:
                 print("Warning : could not find unit")
-                self.unit = " "
+                self.unit = ""
 
             if unit is not None:
                 print("Warning : forcing unit")
@@ -173,7 +173,7 @@ class Cube:
         no_clabel=False,
         title=None,
         alpha=1.0,
-            interpolation=None,
+        interpolation=None,
         resample=0,
         bmaj=None,
         bmin=None,
@@ -194,7 +194,11 @@ class Cube:
         v_minmax = None,
         axes_unit = "arcsec",
         quantity_name=None,
-        stellar_mask = None
+        stellar_mask = None,
+        levels=4,
+        plot_type="imshow",
+        linewidths=None,
+        zorder=None
     ):
         """
         Plotting routine for continuum image, moment maps and channel maps.
@@ -248,7 +252,6 @@ class Cube:
 
 
         if Tb:
-            print(unit)
             im = self._Jybeam_to_Tb(im)
             unit = "K"
             #if unit == "Jy/beam":
@@ -354,15 +357,39 @@ class Cube:
         if threshold is not None:
             im = np.where(im > threshold, im, threshold_value)
 
-        image = ax.imshow(
-            im,
-            norm=norm,
-            extent=extent,
-            origin='lower',
-            cmap=cmap,
-            alpha=alpha,
-            interpolation=interpolation
-        )
+        if plot_type=="imshow":
+            image = ax.imshow(
+                im,
+                norm=norm,
+                extent=extent,
+                origin='lower',
+                cmap=cmap,
+                alpha=alpha,
+                interpolation=interpolation,
+                zorder=zorder
+            )
+        elif plot_type=="contourf":
+            image = ax.contourf(
+                im,
+                extent=extent,
+                origin='lower',
+                levels=levels,
+                cmap=cmap,
+                linewidths=linewidths,
+                alpha=alpha,
+                zorder=zorder
+            )
+        elif plot_type=="contour":
+            image = ax.contour(
+                im,
+                extent=extent,
+                origin='lower',
+                levels=levels,
+                cmap=cmap,
+                linewidths=linewidths,
+                alpha=alpha,
+                zorder=zorder
+            )
 
         if limit is not None:
             limits = [limit, -limit, -limit, limit]
@@ -389,21 +416,22 @@ class Cube:
             # cb = plt.colorbar(image,cax=cax, **kw)
             formatted_unit = unit.replace("-1", "$^{-1}$").replace("-2", "$^{-2}$")
 
-
             if colorbar_label:
                 if moment == 0:
-                    cb.set_label("Flux (" + formatted_unit + ".km.s$^{-1}$)")
+                    cb.set_label("Flux (" + formatted_unit + "$\,$km$\,$s$^{-1}$)")
                 elif moment in [1, 9]:
-                    cb.set_label("Velocity (km.s$^{-1})$")
+                    cb.set_label("Velocity (km$\,$s$^{-1})$")
                 elif moment == 2:
-                    cb.set_label("Velocity dispersion (km.s$^{-1}$)")
+                    cb.set_label("Velocity dispersion (km$\,$s$^{-1}$)")
                 else:
                     if Tb:
                         cb.set_label("T$_\mathrm{B}$ (" + formatted_unit + ")")
                     else:
                         if quantity_name is None:
                             quantity_name = "Flux"
-                        cb.set_label(quantity_name+" (" + formatted_unit + ")")
+                        if len(formatted_unit) > 0:
+                            formatted_unit = " (" + formatted_unit + ")"
+                        cb.set_label(quantity_name+formatted_unit)
             plt.sca(ax)  # we reset the main axis
 
         # -- Adding velocity
