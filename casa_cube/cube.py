@@ -508,14 +508,24 @@ class Cube:
 
         return image
 
-    def plot_line(self,x_axis="velocity", **kwargs):
+    def plot_line(self,x_axis="velocity", threshold=None, **kwargs):
 
+        cube = self.image[:,:,:]
+
+        if threshold is not None:
+            cube = np.where(cube > threshold, cube, 0)
+
+        profile = np.nansum(cube, axis=(1,2)) / self._beam_area_pix()
         if x_axis == "channel":
-            plt.plot(np.sum(self.image[:,:,:], axis=(1,2)), **kwargs)
+            x = np.arange(self.nv)
         elif x_axis == "freq":
-            plt.plot(self.nu, np.sum(self.image[:,:,:], axis=(1,2)), **kwargs)
+            x = self.nu
         else:
-            plt.plot(self.velocity, np.sum(self.image[:,:,:], axis=(1,2)), **kwargs)
+            x = self.velocity
+
+        plt.plot(x, profile, **kwargs)
+
+
 
 
     # -- computing various "moments"
