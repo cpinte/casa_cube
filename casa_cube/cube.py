@@ -104,7 +104,7 @@ class Cube:
                         factor = 1
                     else: # assuming m/s
                         factor = 1e-3
-                    self.velocity = self.CRVAL3 + self.CDELT3 * (np.arange(1, self.nv + 1) - self.CRPIX3) * factor # km/s
+                    self.velocity = (self.CRVAL3 + self.CDELT3 * (np.arange(1, self.nv + 1) - self.CRPIX3)) * factor # km/s
                     self.nu = self.restfreq * (1 - self.velocity * 1000 / sc.c)
                 elif self.velocity_type == "FREQ" or self.velocity_type=="FREQ-LSR": # Hz
                     self.nu = self.CRVAL3 + self.CDELT3 * (np.arange(1, self.nv + 1) - self.CRPIX3)
