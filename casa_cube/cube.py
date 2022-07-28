@@ -16,12 +16,12 @@ default_cmap = "inferno"
 
 
 class Cube:
-    def __init__(self, filename, only_header=False, correct_fct=None, unit=None, pixelscale=None, **kwargs):
+    def __init__(self, filename, only_header=False, correct_fct=None, unit=None, pixelscale=None, restfreq=None, **kwargs):
 
         self.filename = os.path.normpath(os.path.expanduser(filename))
-        self._read(**kwargs, only_header=only_header, correct_fct=correct_fct, unit=unit, pixelscale=pixelscale)
+        self._read(**kwargs, only_header=only_header, correct_fct=correct_fct, unit=unit, pixelscale=pixelscale, restfreq=restfreq)
 
-    def _read(self, only_header=False, correct_fct=None, unit=None, pixelscale=None):
+    def _read(self, only_header=False, correct_fct=None, unit=None, pixelscale=None, restfreq=None):
         try:
             hdu = fits.open(self.filename)
             self.header = hdu[0].header
@@ -44,6 +44,9 @@ class Cube:
 
             if self.unit == "beam-1 Jy": # discminer format
                 self.unit = "Jy/beam"
+
+            if self.unit == "JY/PIXEL": # radmc format
+                self.unit = "Jy pixel-1"
 
             # pixel info
             self.nx = hdu[0].header['NAXIS1']
@@ -85,29 +88,32 @@ class Cube:
                     self.restfreq = hdu[0].header['RESTFREQ']  # gildas format
                     self.wl = sc.c / self.restfreq
                 except:
-                    print("Warning : missing rest frequency")
+                    if restfreq is None:
+                        print("Warning : missing rest frequency")
+                    else:
+                        self.restfreq = restfreq
+                        self.wl = sc.c / self.restfreq
+
             try:
                 self.velocity_type = hdu[0].header['CTYPE3']
                 self.CRPIX3 = hdu[0].header['CRPIX3']
                 self.CRVAL3 = hdu[0].header['CRVAL3']
                 self.CDELT3 = hdu[0].header['CDELT3']
-                if self.velocity_type == "VELO-LSR": # gildas : assumes velocity in km/s
-                    self.velocity = self.CRVAL3 + self.CDELT3 * (np.arange(1, self.nv + 1) - self.CRPIX3)
-                    self.nu = self.restfreq * (1 - self.velocity * 1000 / sc.c)
-                elif self.velocity_type == "VRAD":  # casa format : v m/s -->  km/s
+                if self.velocity_type == "VELO-LSR" or  self.velocity_type == "VRAD": # gildas and casa
                     if self.CDELT3 < 10: # assuming km/s
                         factor = 1
                     else: # assuming m/s
                         factor = 1e-3
-                    self.velocity = (self.CRVAL3 + self.CDELT3 * (np.arange(1, self.nv + 1) - self.CRPIX3)) * factor # km/s
+                    self.velocity = self.CRVAL3 + self.CDELT3 * (np.arange(1, self.nv + 1) - self.CRPIX3) * factor # km/s
                     self.nu = self.restfreq * (1 - self.velocity * 1000 / sc.c)
-                elif self.velocity_type == "FREQ": # Hz
+                elif self.velocity_type == "FREQ" or self.velocity_type=="FREQ-LSR": # Hz
                     self.nu = self.CRVAL3 + self.CDELT3 * (np.arange(1, self.nv + 1) - self.CRPIX3)
                     self.velocity = (-(self.nu - self.restfreq) / self.restfreq * sc.c / 1000.0)  # km/s
                 else:
                     raise ValueError("Velocity type is not recognised:", self.velocity_type)
                 self.is_V = True
             except:
+                print("Warning  : could not extract velocity")
                 self.is_V = False
 
             # beam
@@ -198,7 +204,8 @@ class Cube:
         levels=4,
         plot_type="imshow",
         linewidths=None,
-        zorder=None
+        zorder=None,
+        per_arcsec2=False
     ):
         """
         Plotting routine for continuum image, moment maps and channel maps.
@@ -262,6 +269,11 @@ class Cube:
             #    return ValueError
             _color_scale = 'lin'
 
+
+        if per_arcsec2:
+            im = im / self.pixelscale**2
+            unit = unit.replace("pixel-1", "arcsec-2")
+
         # --- Convolution by taper
         if taper is not None:
             if taper < self.bmaj:
@@ -299,7 +311,7 @@ class Cube:
             im = scipy.ndimage.zoom(im.data, resample, order=3)
             im = np.ma.masked_where(mask > 0.0, im)
 
-            # -- default color scale
+        # -- default color scale
         if color_scale is None:
             color_scale = _color_scale
 
