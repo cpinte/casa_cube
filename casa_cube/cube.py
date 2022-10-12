@@ -8,11 +8,12 @@ from matplotlib.patches import Ellipse
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from astropy.convolution import Gaussian2DKernel, convolve, convolve_fft
 import scipy.ndimage
+import cmasher as cmr
 
 
 FWHM_to_sigma = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2)))
 arcsec = np.pi / 648000
-default_cmap = "inferno"
+default_cmap = cmr.arctic
 
 
 class Cube:
@@ -420,9 +421,10 @@ class Cube:
 
         # -- Color bar
         if colorbar:
-            divider = make_axes_locatable(ax)
-            cax = divider.append_axes("right", size="5%", pad=0.05)
-            cb = plt.colorbar(image, cax=cax, extend=colorbar_extend)
+            #divider = make_axes_locatable(ax)
+            #cax = divider.append_axes("right", size="5%", pad=0.05)
+            #cb = plt.colorbar(image, cax=cax, extend=colorbar_extend)
+            cb = add_colorbar(image)
 
             # cax,kw = mpl.colorbar.make_axes(ax)
             # cb = plt.colorbar(image,cax=cax, **kw)
@@ -518,6 +520,9 @@ class Cube:
             )
             ax.add_patch(mask)
 
+        #-- Saving the last plotted quantity
+        self.last_image = im
+
         return image
 
     def plot_line(self,x_axis="velocity", threshold=None, **kwargs):
@@ -560,7 +565,7 @@ class Cube:
         v = self.velocity - v0
 
         if threshold is not None:
-            cube = np.where(cube > threshold, cube, 0)
+            cube = np.where(cube > threshold, cube, np.nan)
 
         if v_minmax is not None:
             vmin = np.min(v_minmax)
@@ -680,3 +685,37 @@ class Cube:
             zi = z[y.astype(np.int), x.astype(np.int)]
 
         return zi
+
+
+def add_colorbar(mappable, shift=None, width=0.05, ax=None, trim_left=0, trim_right=0, side="right",**kwargs):
+    # creates a color bar that does not shrink the main plot or panel
+    # only works for horizontal bars so far
+
+    if ax is None:
+        ax = mappable.axes
+
+    # Get current figure dimensions
+    try:
+        fig = ax.figure
+        p = np.zeros([1,4])
+        p[0,:] = ax.get_position().get_points().flatten()
+    except:
+        fig = ax[0].figure
+        p = np.zeros([ax.size,4])
+        for k, a in enumerate(ax):
+            p[k,:] = a.get_position().get_points().flatten()
+    xmin = np.amin(p[:,0]) ; xmax = np.amax(p[:,2]) ; dx = xmax - xmin
+    ymin = np.amin(p[:,1]) ; ymax = np.amax(p[:,3]) ; dy = ymax - ymin
+
+    if side=="top":
+        if shift is None:
+            shift = 0.2
+        cax = fig.add_axes([xmin + trim_left, ymax + shift * dy, dx - trim_left - trim_right, width * dy])
+        cax.xaxis.set_ticks_position('top')
+        return fig.colorbar(mappable, cax=cax, orientation="horizontal",**kwargs)
+    elif side=="right":
+        if shift is None:
+            shift = 0.05
+        cax = fig.add_axes([xmax + shift*dx, ymin, width * dx, dy])
+        cax.xaxis.set_ticks_position('top')
+        return fig.colorbar(mappable, cax=cax, orientation="vertical",**kwargs)
