@@ -3,7 +3,7 @@ import numpy as np
 from astropy.io import fits
 import scipy.constants as sc
 import matplotlib.pyplot as plt
-import matplotlib.colors as colors
+import matplotlib.colors as mcolors
 from matplotlib.patches import Ellipse
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from astropy.convolution import Gaussian2DKernel, convolve, convolve_fft
@@ -206,7 +206,8 @@ class Cube:
         plot_type="imshow",
         linewidths=None,
         zorder=None,
-        per_arcsec2=False
+        per_arcsec2=False,
+        colors=None
     ):
         """
         Plotting routine for continuum image, moment maps and channel maps.
@@ -327,11 +328,11 @@ class Cube:
 
         # -- set up the color scale
         if color_scale == 'log':
-            norm = colors.LogNorm(vmin=fmin, vmax=fmax, clip=True)
+            norm = mcolors.LogNorm(vmin=fmin, vmax=fmax, clip=True)
         elif color_scale == 'lin':
-            norm = colors.Normalize(vmin=fmin, vmax=fmax, clip=True)
+            norm = mcolors.Normalize(vmin=fmin, vmax=fmax, clip=True)
         elif color_scale == 'sqrt':
-            norm = colors.PowerNorm(0.5, vmin=fmin, vmax=fmax, clip=True)
+            norm = mcolors.PowerNorm(0.5, vmin=fmin, vmax=fmax, clip=True)
         else:
             raise ValueError("Unknown color scale: " + color_scale)
 
@@ -340,6 +341,9 @@ class Cube:
                 cmap = "RdBu_r"
             else:
                 cmap = default_cmap
+
+        if colors is not None:
+            cmap = None
 
 
         if axes_unit.lower() == 'arcsec':
@@ -401,7 +405,8 @@ class Cube:
                 cmap=cmap,
                 linewidths=linewidths,
                 alpha=alpha,
-                zorder=zorder
+                zorder=zorder,
+                colors=colors
             )
 
         if limit is not None:
