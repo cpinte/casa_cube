@@ -531,14 +531,10 @@ class Cube:
         return image
 
     def get_line_profile(self,threshold=None, **kwargs):
-         cube = self.image[:,:,:]
 
-        if threshold is None:
-            self.get_std()
-            threshold = 3 * self.std
-
-        cube = np.where(cube > threshold, cube, 0)
-
+        cube = self.image[:,:,:]
+        if threshold is not None:
+            cube = np.where(cube > threshold, cube, 0)
         profile = np.nansum(cube, axis=(1,2)) / self._beam_area_pix()
 
         return profile
@@ -644,7 +640,7 @@ class Cube:
 
     def get_std(self):
         # compute std deviation in image, assumes that no primary beam correction has been applied
-        self.std = np.nanstd(self.cube.image[[0,-1],:,:])
+        self.std = np.nanstd(self.image[[0,-1],:,:])
 
     # -- Functions to deal the synthesized beam.
     def _beam_area(self):
