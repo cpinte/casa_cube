@@ -530,14 +530,21 @@ class Cube:
 
         return image
 
-    def plot_line(self,x_axis="velocity", threshold=None, **kwargs):
+    def get_line_profile(self,threshold=None, **kwargs):
+         cube = self.image[:,:,:]
 
-        cube = self.image[:,:,:]
+        if threshold is None:
+            self.get_std()
+            threshold = 3 * self.std
 
-        if threshold is not None:
-            cube = np.where(cube > threshold, cube, 0)
+        cube = np.where(cube > threshold, cube, 0)
 
         profile = np.nansum(cube, axis=(1,2)) / self._beam_area_pix()
+
+        return profile
+
+    def plot_line(self,x_axis="velocity", threshold=None, **kwargs):
+
         if x_axis == "channel":
             x = np.arange(self.nv)
         elif x_axis == "freq":
@@ -545,9 +552,9 @@ class Cube:
         else:
             x = self.velocity
 
+        profile = self.get_line_profile(threshold=threshold)
+
         plt.plot(x, profile, **kwargs)
-
-
 
 
     # -- computing various "moments"
@@ -634,6 +641,10 @@ class Cube:
 
         return np.sqrt(8*np.log(2)* M2**2 - 2*cs2)
 
+
+    def get_std(self):
+        # compute std deviation in image, assumes that no primary beam correction has been applied
+        self.std = np.nanstd(self.cube.image[[0,-1],:,:])
 
     # -- Functions to deal the synthesized beam.
     def _beam_area(self):
