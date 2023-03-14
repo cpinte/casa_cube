@@ -154,8 +154,11 @@ class Cube:
 
     def cutout(self, filename, FOV=None, ix_min=None, ix_max=None, iv_min=None, iv_max=None, vmin=None, vmax=None, no_pola=False, channels=None, **kwargs):
 
-        image = self.image
-        header = self.header
+        import copy
+
+        image = copy.deepcopy(self.image)
+        header = copy.deepcopy(self.header)
+
         ndim = image.ndim
 
         # ---- Spatial trimming
@@ -212,7 +215,7 @@ class Cube:
             header['CRPIX3'] = 1
         header['NAXIS3'] = iv_max - iv_min
 
-        # Polarisation trimming
+        # --- Polarisation trimming
         if ndim > 3:
             if no_pola:
                 pmin = 0
@@ -228,6 +231,8 @@ class Cube:
             raise ValueError("incorrect dimension in fits file")
 
         fits.writeto(os.path.normpath(os.path.expanduser(filename)),image.data, header, **kwargs)
+
+        return
 
 
     def writeto(filename, image, header, **kwargs):
