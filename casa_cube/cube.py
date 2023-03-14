@@ -152,7 +152,7 @@ class Cube:
             return ValueError
 
 
-    def cutout(self, filename, FOV=None, ix_min=None, ix_max=None, iv_min=None, iv_max=None, vmin=None, vmax=None, no_pola=False, channels=None, **kwargs):
+    def cutout(self, filename, FOV=None, ix_min=None, ix_max=None, iv_min=None, iv_max=None, vmin=None, vmax=None, no_pola=False, pmin=None, pmax=None, channels=None, **kwargs):
 
         import copy
 
@@ -206,6 +206,12 @@ class Cube:
             iv_min=0
         if iv_max is None:
             iv_max=self.nv
+
+        # if the velocity axis is flipped
+        if iv_min > iv_max:
+            temp = iv_min
+            iv_min = iv_max
+            iv_max = temp
 
         # Updating header
         if header['CRPIX3']-1 >= iv_min: # we keep the same pixel, and adjust its index
