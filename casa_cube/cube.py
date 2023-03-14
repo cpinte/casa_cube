@@ -151,8 +151,87 @@ class Cube:
             print('cannot open', self.filename)
             return ValueError
 
-    def writeto(self,filename, **kwargs):
-        fits.writeto(os.path.normpath(os.path.expanduser(filename)),self.image.data, self.header, **kwargs)
+
+    def cutout(self, filename, FOV=None, ix_min=None, ix_max=None, iv_min=None, iv_max=None, vmin=None, vmax=None, no_pola=False, channels=None, **kwargs):
+
+        image = self.image
+        header = self.header
+        ndim = image.ndim
+
+        # ---- Spatial trimming
+        if FOV is not None:
+            cutout_pix = int(FOV / self.pixelscale)
+            while cutout_pix * self.pixelscale < FOV:
+                cutout_pix += 1
+                excess_pix = int(0.5 * (self.nx - cutout_pix))
+
+                ix_min=excess_pix
+                ix_max=excess_pix+cutout_pix
+
+        # We do not trim by default
+        if ix_min is None:
+            ix_min=0
+        if ix_max is None:
+            ix_max=self.nx
+
+        # forcing square image for now
+        iy_min = ix_min
+        iy_max = ix_max
+
+        # Updating header
+        if header['CRPIX1']-1 >= ix_min: # we keep the same pixel, and adjust its index
+            header['CRPIX1'] -= ix_min
+        else: # we use the first pixel, and update its coordinates
+            header['CRVAL1'] += (ix_min - header['CRPIX1']-1) * header['CDELT1']
+            header['CRPIX1'] = 1
+        header['CRPIX2'] = ix_max-ix_min
+
+        if header['CRPIX2']-1 >= iy_min: # we keep the same pixel, and adjust its index
+            header['CRPIX2'] -= iy_min
+        else: # we use the first pixel, and update its coordinates
+            header['CRVAL2'] += (iy_min - header['CRPIX2']-1) * header['CDELT2']
+        header['CRPIX2'] = iy_max-iy_min
+
+        # ---- Spectral trimming
+        if vmin is not None:
+            iv_min = np.argmin(np.abs(self.velocity - vmin))
+        if vmax is not None:
+            iv_max = np.argmin(np.abs(self.velocity - vmax))
+
+        # We do not trim by default
+        if iv_min is None:
+            iv_min=0
+        if iv_max is None:
+            iv_max=self.nv
+
+        # Updating header
+        if header['CRPIX3']-1 >= iv_min: # we keep the same pixel, and adjust its index
+            header['CRPIX3'] -= iv_min
+        else: # we use the first pixel, and update its coordinates
+            header['CRVAL3'] += (iv_min - (header['CRPIX3']-1)) * header['CDELT3']
+            header['CRPIX3'] = 1
+        header['NAXIS3'] = iv_max - iv_min
+
+        # Polarisation trimming
+        if ndim > 3:
+            if no_pola:
+                pmin = 0
+                pmax = 0
+                header['NAXIS4'] = 1
+
+        # trimming cube
+        if (image.ndim == 4):
+            image = image[p_min:p_max,iv_min:iv_max,iy_min:iy_max,ix_min:ix_max]
+        elif (image.ndim == 3):
+            image = image[iv_min:iv_max,iy_min:iy_max,ix_min:ix_max]
+        else:
+            raise ValueError("incorrect dimension in fits file")
+
+        fits.writeto(os.path.normpath(os.path.expanduser(filename)),image.data, header, **kwargs)
+
+
+    def writeto(filename, image, header, **kwargs):
+        fits.writeto(os.path.normpath(os.path.expanduser(filename)),image.data, header, **kwargs)
 
     def plot(
         self,
@@ -207,7 +286,9 @@ class Cube:
         linewidths=None,
         zorder=None,
         per_arcsec2=False,
-        colors=None
+        colors=None,
+        x_beam = 0.125,
+        y_beam = 0.125
     ):
         """
         Plotting routine for continuum image, moment maps and channel maps.
@@ -491,9 +572,6 @@ class Cube:
 
         # --- Adding beam
         if plot_beam:
-            dx = 0.125
-            dy = 0.125
-
             # In case the beam is wrong in the header, when can pass the correct one
             if bmaj is None:
                 bmaj = self.bmaj
@@ -503,7 +581,7 @@ class Cube:
                 bpa = self.bpa
 
             beam = Ellipse(
-                ax.transLimits.inverted().transform((dx, dy)),
+                ax.transLimits.inverted().transform((x_beam, y_beam)),
                 width=bmin,
                 height=bmaj,
                 angle=-bpa,
@@ -696,7 +774,7 @@ class Cube:
             x, y = np.linspace(x0, x1, length), np.linspace(y0, y1, length)
             zi = z[y.astype(np.int), x.astype(np.int)]
 
-        return zi
+        return x,y,zi
 
 
 def add_colorbar(mappable, shift=None, width=0.05, ax=None, trim_left=0, trim_right=0, side="right",**kwargs):
