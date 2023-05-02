@@ -21,3 +21,23 @@ without needing to repeat the above step):
 ```
  python3 setup.py develop
 ```
+
+## Basic usage for 3D molecular line cube
+```
+import casa_cube as casa
+
+obs = casa.Cube('HD_163296_CO_220GHz.robust_0.5_wcont.image.fits')
+obs.plot(iv=0)
+```
+For a line cube one must specify either the channel number (iv=) or a moment map:
+```
+obs.plot(moment=1,cmap='RdBu_r')
+```
+
+## Basic usage for 2D fits image
+```
+import casa_cube as casa
+
+obs = casa.Cube('HD169142_2015-05-03_Q_phi.fits',pixelscale=0.01225)
+obs.plot()
+```
