@@ -7,7 +7,7 @@ import matplotlib.colors as mcolors
 from matplotlib.patches import Ellipse
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from astropy.convolution import Gaussian2DKernel, convolve, convolve_fft
-import scipy.ndimage
+import scipy.ndimage as ndimage
 import cmasher as cmr
 
 
@@ -17,12 +17,12 @@ default_cmap = cmr.arctic
 
 
 class Cube:
-    def __init__(self, filename, only_header=False, correct_fct=None, unit=None, pixelscale=None, restfreq=None, **kwargs):
+    def __init__(self, filename, only_header=False, correct_fct=None, unit=None, pixelscale=None, restfreq=None, zoom=None, **kwargs):
 
         self.filename = os.path.normpath(os.path.expanduser(filename))
-        self._read(**kwargs, only_header=only_header, correct_fct=correct_fct, unit=unit, pixelscale=pixelscale, restfreq=restfreq)
+        self._read(**kwargs, only_header=only_header, correct_fct=correct_fct, unit=unit, pixelscale=pixelscale, restfreq=restfreq, zoom=zoom)
 
-    def _read(self, only_header=False, correct_fct=None, unit=None, pixelscale=None, restfreq=None):
+    def _read(self, only_header=False, correct_fct=None, unit=None, pixelscale=None, restfreq=None, zoom=None):
         try:
             hdu = fits.open(self.filename)
             self.header = hdu[0].header
@@ -48,6 +48,7 @@ class Cube:
 
             if self.unit == "JY/PIXEL": # radmc format
                 self.unit = "Jy pixel-1"
+
 
             # pixel info
             self.nx = hdu[0].header['NAXIS1']
@@ -146,6 +147,18 @@ class Cube:
 
                 if correct_fct is not None:
                     self.image *= correct_fct[:,np.newaxis, np.newaxis]
+
+                if zoom is not None:
+                    print('Original size = ', self.image.shape)
+                    self.image[np.isnan(self.image)] = 0.
+                    self.image = ndimage.zoom(self.image, zoom=[1, zoom, zoom])
+                    print('Resampled size = ', self.image.shape)
+                    nx = self.image.shape[-1]
+                    ny = self.image.shape[-2]
+                    self.pixelscale = self.pixelscale*self.nx/nx
+                    self.nx = nx
+                    self.ny = ny
+
             hdu.close()
         except OSError:
             print('cannot open', self.filename)
