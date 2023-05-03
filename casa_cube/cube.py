@@ -378,7 +378,7 @@ class Cube:
             _color_scale = 'lin'
 
         if mJy:
-            im *= 1e3
+            im = im*1e3
             unit = unit.replace("Jy","mJy")
 
         if per_arcsec2:
