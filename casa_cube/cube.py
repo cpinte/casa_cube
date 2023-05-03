@@ -299,7 +299,8 @@ class Cube:
         per_arcsec2=False,
         colors=None,
         x_beam = 0.125,
-        y_beam = 0.125
+        y_beam = 0.125,
+        mJy=False
     ):
         """
         Plotting routine for continuum image, moment maps and channel maps.
@@ -363,6 +364,9 @@ class Cube:
             #    return ValueError
             _color_scale = 'lin'
 
+        if mJy:
+            im *= 1e3
+            unit = unit.replace("Jy","mJy")
 
         if per_arcsec2:
             im = im / self.pixelscale**2
