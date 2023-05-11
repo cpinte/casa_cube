@@ -654,10 +654,14 @@ class Cube:
         else:
             x = self.velocity
 
-        profile = self.get_line_profile(threshold=threshold)
+        p = self.get_line_profile(threshold=threshold)
 
-        plt.plot(x, profile, **kwargs)
+        plt.plot(x, p, **kwargs)
 
+        dv = np.abs(self.velocity[2]-self.velocity[1])
+        print("Integreated line flux =", (np.sum(p) - 0.5*(p[0]+p[-1]))*dv)
+
+        return
 
     # -- computing various "moments"
     def get_moment_map(self, moment=0, v0=0, M0_threshold=None, M8_threshold=None, threshold=None, iv_support=None, v_minmax = None):
@@ -714,7 +718,6 @@ class Cube:
 
         if moment == 9:
             M = v[0] + dv * np.argmax(cube, axis=0)
-            print(v)
 
         if M0_threshold is not None:
             M = np.ma.masked_where(M0 < M0_threshold, M)
