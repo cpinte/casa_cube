@@ -813,7 +813,10 @@ def add_colorbar(mappable, shift=None, width=0.05, ax=None, trim_left=0, trim_ri
     # only works for horizontal bars so far
 
     if ax is None:
-        ax = mappable.axes
+        try:
+            ax = mappable.axes
+        except:
+            ax = plt.gca()
 
     # Get current figure dimensions
     try:
