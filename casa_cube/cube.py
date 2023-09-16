@@ -22,7 +22,7 @@ class Cube:
         self.filename = os.path.normpath(os.path.expanduser(filename))
         self._read(**kwargs, only_header=only_header, correct_fct=correct_fct, unit=unit, pixelscale=pixelscale, restfreq=restfreq, zoom=zoom)
 
-    def _read(self, only_header=False, correct_fct=None, unit=None, pixelscale=None, restfreq=None, zoom=None):
+    def _read(self, only_header=False, correct_fct=None, unit=None, pixelscale=None, instrument=None, restfreq=None, zoom=None):
         try:
             hdu = fits.open(self.filename)
             self.header = hdu[0].header
@@ -65,10 +65,37 @@ class Cube:
                 self.cy = self.ny//2 + 1
                 self.x_ref = 0
                 self.y_ref = 0
-                print(pixelscale)
+
+                # SPHERE pixelscales (Maire et al 2016)
+                if instrument == "IFS":
+                    pixelscale = 7.36e-3
+                elif instrument == "IRDIS_Y2":
+                    pixelscale = 12.283e-3
+                elif instrument == "IRDIS_Y3":
+                    pixelscale = 12.283e-3
+                elif instrument == "IRDIS_J2":
+                    pixelscale = 12.266e-3
+                elif instrument == "IRDIS_J3":
+                    pixelscale = 12.261e-3
+                elif instrument == "IRDIS_H2":
+                    pixelscale = 12.255e-3
+                elif instrument == "IRDIS_H3":
+                    pixelscale = 12.250e-3
+                elif instrument == "IRDIS_K2":
+                    pixelscale = 12.267e-3
+                elif instrument == "IRDIS_K3":
+                    pixelscale = 12.263e-3
+                elif instrument == "IRDIS_BB_J":
+                    pixelscale = 12.263e-3
+                elif instrument == "IRDIS_BB_H":
+                    pixelscale = 12.251e-3
+                elif instrument == "IRDIS_BB_Ks":
+                    pixelscale = 12.265e-3
+
                 if pixelscale is None:
                     raise ValueError("please provide pixelscale")
                 self.pixelscale = pixelscale
+                print('Using a '+pixelscale,'"')
 
             self.FOV = np.maximum(self.nx, self.ny) * self.pixelscale
 
