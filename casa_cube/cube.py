@@ -129,10 +129,21 @@ class Cube:
                 self.CRVAL3 = hdu[0].header['CRVAL3']
                 self.CDELT3 = hdu[0].header['CDELT3']
                 if self.velocity_type == "VELO-LSR" or  self.velocity_type == "VRAD": # gildas and casa
-                    if self.CDELT3 < 10: # assuming km/s
-                        factor = 1
-                    else: # assuming m/s
+                    try:
+                        self.CUNIT3 = hdu[0].header['CUNIT3']
+                    except:
+                        self.CUNIT3 = None
+                    if self.CUNIT3 == "M/S":
                         factor = 1e-3
+                    elif self.CUNIT3 == "KM/S":
+                        factor = 1
+                    else:
+                        if self.CDELT3 < 5: # assuming km/s
+                            print("Assuming velcoity axis is in km/s")
+                            factor = 1
+                        else: # assuming m/s
+                            factor = 1e-3
+                            print("Assuming velcoity axis is in m/s")
                     self.velocity = (self.CRVAL3 + self.CDELT3 * (np.arange(1, self.nv + 1) - self.CRPIX3)) * factor # km/s
                     self.nu = self.restfreq * (1 - self.velocity * 1000 / sc.c)
                 elif self.velocity_type == "FREQ" or self.velocity_type=="FREQ-LSR": # Hz
