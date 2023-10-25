@@ -21,7 +21,7 @@ class Cube:
         self.filename = os.path.normpath(os.path.expanduser(filename))
         self._read(**kwargs, only_header=only_header, correct_fct=correct_fct, unit=unit, pixelscale=pixelscale, restfreq=restfreq, zoom=zoom)
 
-    def _read(self, only_header=False, correct_fct=None, unit=None, pixelscale=None, restfreq=None, zoom=None):
+    def _read(self, only_header=False, correct_fct=None, unit=None, pixelscale=None, instrument=None, restfreq=None, zoom=None):
         try:
             hdu = fits.open(self.filename)
             self.header = hdu[0].header
@@ -64,10 +64,37 @@ class Cube:
                 self.cy = self.ny//2 + 1
                 self.x_ref = 0
                 self.y_ref = 0
-                print(pixelscale)
+
+                # SPHERE pixelscales (Maire et al 2016)
+                if instrument == "IFS":
+                    pixelscale = 7.36e-3
+                elif instrument == "IRDIS_Y2":
+                    pixelscale = 12.283e-3
+                elif instrument == "IRDIS_Y3":
+                    pixelscale = 12.283e-3
+                elif instrument == "IRDIS_J2":
+                    pixelscale = 12.266e-3
+                elif instrument == "IRDIS_J3":
+                    pixelscale = 12.261e-3
+                elif instrument == "IRDIS_H2":
+                    pixelscale = 12.255e-3
+                elif instrument == "IRDIS_H3":
+                    pixelscale = 12.250e-3
+                elif instrument == "IRDIS_K2":
+                    pixelscale = 12.267e-3
+                elif instrument == "IRDIS_K3":
+                    pixelscale = 12.263e-3
+                elif instrument == "IRDIS_BB_J":
+                    pixelscale = 12.263e-3
+                elif instrument == "IRDIS_BB_H":
+                    pixelscale = 12.251e-3
+                elif instrument == "IRDIS_BB_Ks":
+                    pixelscale = 12.265e-3
+
                 if pixelscale is None:
                     raise ValueError("please provide pixelscale")
                 self.pixelscale = pixelscale
+                print('Using a '+pixelscale,'"')
 
             self.FOV = np.maximum(self.nx, self.ny) * self.pixelscale
 
@@ -101,10 +128,21 @@ class Cube:
                 self.CRVAL3 = hdu[0].header['CRVAL3']
                 self.CDELT3 = hdu[0].header['CDELT3']
                 if self.velocity_type == "VELO-LSR" or  self.velocity_type == "VRAD": # gildas and casa
-                    if self.CDELT3 < 10: # assuming km/s
-                        factor = 1
-                    else: # assuming m/s
+                    try:
+                        self.CUNIT3 = hdu[0].header['CUNIT3']
+                    except:
+                        self.CUNIT3 = None
+                    if self.CUNIT3 == "M/S":
                         factor = 1e-3
+                    elif self.CUNIT3 == "KM/S":
+                        factor = 1
+                    else:
+                        if self.CDELT3 < 5: # assuming km/s
+                            print("Assuming velcoity axis is in km/s")
+                            factor = 1
+                        else: # assuming m/s
+                            factor = 1e-3
+                            print("Assuming velcoity axis is in m/s")
                     self.velocity = (self.CRVAL3 + self.CDELT3 * (np.arange(1, self.nv + 1) - self.CRPIX3)) * factor # km/s
                     self.nu = self.restfreq * (1 - self.velocity * 1000 / sc.c)
                 elif self.velocity_type == "FREQ" or self.velocity_type=="FREQ-LSR": # Hz
