@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib.patches import Ellipse
 from astropy.convolution import Gaussian2DKernel, convolve_fft
-from scipy.ndimage import zoom, map_coordinates
+from scipy import ndimage
 import cmasher as cmr
 
 
@@ -188,7 +188,7 @@ class Cube:
                 if zoom is not None:
                     print('Original size = ', self.image.shape)
                     self.image[np.isnan(self.image)] = 0.
-                    self.image = zoom(self.image, zoom=[1, zoom, zoom])
+                    self.image = ndimage.zoom(self.image, zoom=[1, zoom, zoom])
                     print('Resampled size = ', self.image.shape)
                     nx = self.image.shape[-1]
                     ny = self.image.shape[-2]
@@ -453,8 +453,8 @@ class Cube:
 
         # --- resampling
         if resample > 0:
-            mask = zoom(im.mask * 1, resample, order=3)
-            im = zoom(im.data, resample, order=3)
+            mask = ndimage.zoom(im.mask * 1, resample, order=3)
+            im = ndimage.zoom(im.data, resample, order=3)
             im = np.ma.masked_where(mask > 0.0, im)
 
         # -- default color scale
@@ -832,7 +832,7 @@ class Cube:
         if num is not None:
             # Extract the values along the line, using cubic interpolation
             x, y = np.linspace(x0, x1, num), np.linspace(y0, y1, num)
-            zi = map_coordinates(z, np.vstack((y,x)))
+            zi = ndimage.map_coordinates(z, np.vstack((y,x)))
 
         else:
             # Extract the values along the line at the pixel spacing
