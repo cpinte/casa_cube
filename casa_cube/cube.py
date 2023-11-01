@@ -5,9 +5,8 @@ import scipy.constants as sc
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib.patches import Ellipse
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from astropy.convolution import Gaussian2DKernel, convolve, convolve_fft
-import scipy.ndimage as ndimage
+from astropy.convolution import Gaussian2DKernel, convolve_fft
+from scipy import ndimage
 import cmasher as cmr
 
 
@@ -36,11 +35,11 @@ class Cube:
             try:
                 self.unit = hdu[0].header['BUNIT']
             except:
-                print("Warning : could not find unit")
+                print("Warning: could not find unit")
                 self.unit = ""
 
             if unit is not None:
-                print("Warning : forcing unit")
+                print("Warning: forcing unit")
                 self.unit=unit
 
             if self.unit == "beam-1 Jy": # discminer format
@@ -93,9 +92,9 @@ class Cube:
                     pixelscale = 12.265e-3
 
                 if pixelscale is None:
-                    raise ValueError("please provide pixelscale")
+                    raise ValueError("Please provide pixelscale (or instrument)")
                 self.pixelscale = pixelscale
-                print('Using a '+pixelscale,'"')
+                print(f"Pixel scale set to {self.pixelscale} mas")
 
             self.FOV = np.maximum(self.nx, self.ny) * self.pixelscale
 
@@ -118,7 +117,7 @@ class Cube:
                     self.wl = sc.c / self.restfreq
                 except:
                     if restfreq is None:
-                        print("Warning : missing rest frequency")
+                        print("Warning: missing rest frequency")
                     else:
                         self.restfreq = restfreq
                         self.wl = sc.c / self.restfreq
@@ -139,11 +138,11 @@ class Cube:
                         factor = 1
                     else:
                         if self.CDELT3 < 5: # assuming km/s
-                            print("Assuming velcoity axis is in km/s")
+                            print("Assuming velocity axis is in km/s")
                             factor = 1
                         else: # assuming m/s
                             factor = 1e-3
-                            print("Assuming velcoity axis is in m/s")
+                            print("Assuming velocity axis is in m/s")
                     self.velocity = (self.CRVAL3 + self.CDELT3 * (np.arange(1, self.nv + 1) - self.CRPIX3)) * factor # km/s
                     self.nu = self.restfreq * (1 - self.velocity * 1000 / sc.c)
                 elif self.velocity_type == "FREQ" or self.velocity_type=="FREQ-LSR": # Hz
@@ -153,7 +152,7 @@ class Cube:
                     raise ValueError("Velocity type is not recognised:", self.velocity_type)
                 self.is_V = True
             except:
-                print("Warning  : could not extract velocity")
+                print("Warning: could not extract velocity")
                 self.is_V = False
 
             # beam
@@ -168,7 +167,7 @@ class Cube:
                     self.bmin = hdu[1].data[0][1]
                     self.bpa = hdu[1].data[0][2]
                 except:
-                    print("Warning : missing beam")
+                    print("Warning: missing beam")
                     self.bmaj = 0
                     self.bmin = 0
                     self.bpa = 0
@@ -300,7 +299,6 @@ class Cube:
         iv=None,
         v=None,
         colorbar=True,
-        colorbar_extend="neither",
         plot_beam=True,
         color_scale=None,
         fmin=None,
@@ -318,7 +316,6 @@ class Cube:
         no_ylabel=False,
         no_xlabel=False,
         no_vlabel=False,
-        no_clabel=False,
         title=None,
         alpha=1.0,
         interpolation=None,
@@ -456,8 +453,8 @@ class Cube:
 
         # --- resampling
         if resample > 0:
-            mask = scipy.ndimage.zoom(im.mask * 1, resample, order=3)
-            im = scipy.ndimage.zoom(im.data, resample, order=3)
+            mask = ndimage.zoom(im.mask * 1, resample, order=3)
+            im = ndimage.zoom(im.data, resample, order=3)
             im = np.ma.masked_where(mask > 0.0, im)
 
         # -- default color scale
@@ -697,14 +694,14 @@ class Cube:
         plt.plot(x, p, **kwargs)
 
         dv = np.abs(self.velocity[2]-self.velocity[1])
-        print("Integreated line flux =", (np.sum(p) - 0.5*(p[0]+p[-1]))*dv)
+        print("Integrated line flux =", (np.sum(p) - 0.5*(p[0]+p[-1]))*dv)
 
         return
 
     # -- computing various "moments"
     def get_moment_map(self, moment=0, v0=0, M0_threshold=None, M8_threshold=None, threshold=None, iv_support=None, v_minmax = None):
         """
-        We use the same comvention as CASA : moment 8 is peak flux, moment 9 is peak velocity
+        We use the same convention as CASA : moment 8 is peak flux, moment 9 is peak velocity
         This returns the moment maps in physical units, ie:
          - M0 is the integrated line flux (Jy/beam . km/s)
          - M1 is the average velocity (km/s)
@@ -835,7 +832,7 @@ class Cube:
         if num is not None:
             # Extract the values along the line, using cubic interpolation
             x, y = np.linspace(x0, x1, num), np.linspace(y0, y1, num)
-            zi = scipy.ndimage.map_coordinates(z, np.vstack((y,x)))
+            zi = ndimage.map_coordinates(z, np.vstack((y,x)))
 
         else:
             # Extract the values along the line at the pixel spacing
