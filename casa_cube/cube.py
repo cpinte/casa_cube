@@ -35,11 +35,11 @@ class Cube:
             try:
                 self.unit = hdu[0].header['BUNIT']
             except:
-                print("Warning : could not find unit")
+                print("Warning: could not find unit")
                 self.unit = ""
 
             if unit is not None:
-                print("Warning : forcing unit")
+                print("Warning: forcing unit")
                 self.unit=unit
 
             if self.unit == "beam-1 Jy": # discminer format
@@ -117,7 +117,7 @@ class Cube:
                     self.wl = sc.c / self.restfreq
                 except:
                     if restfreq is None:
-                        print("Warning : missing rest frequency")
+                        print("Warning: missing rest frequency")
                     else:
                         self.restfreq = restfreq
                         self.wl = sc.c / self.restfreq
@@ -152,7 +152,7 @@ class Cube:
                     raise ValueError("Velocity type is not recognised:", self.velocity_type)
                 self.is_V = True
             except:
-                print("Warning : could not extract velocity")
+                print("Warning: could not extract velocity")
                 self.is_V = False
 
             # beam
@@ -167,7 +167,7 @@ class Cube:
                     self.bmin = hdu[1].data[0][1]
                     self.bpa = hdu[1].data[0][2]
                 except:
-                    print("Warning : missing beam")
+                    print("Warning: missing beam")
                     self.bmaj = 0
                     self.bmin = 0
                     self.bpa = 0
