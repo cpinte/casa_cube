@@ -92,9 +92,9 @@ class Cube:
                     pixelscale = 12.265e-3
 
                 if pixelscale is None:
-                    raise ValueError("please provide pixelscale")
+                    raise ValueError("Please provide pixelscale (or instrument)")
                 self.pixelscale = pixelscale
-                print('Using a '+pixelscale,'"')
+                print(f"Pixel scale set to {self.pixelscale} mas")
 
             self.FOV = np.maximum(self.nx, self.ny) * self.pixelscale
 
@@ -138,11 +138,11 @@ class Cube:
                         factor = 1
                     else:
                         if self.CDELT3 < 5: # assuming km/s
-                            print("Assuming velcoity axis is in km/s")
+                            print("Assuming velocity axis is in km/s")
                             factor = 1
                         else: # assuming m/s
                             factor = 1e-3
-                            print("Assuming velcoity axis is in m/s")
+                            print("Assuming velocity axis is in m/s")
                     self.velocity = (self.CRVAL3 + self.CDELT3 * (np.arange(1, self.nv + 1) - self.CRPIX3)) * factor # km/s
                     self.nu = self.restfreq * (1 - self.velocity * 1000 / sc.c)
                 elif self.velocity_type == "FREQ" or self.velocity_type=="FREQ-LSR": # Hz
@@ -152,7 +152,7 @@ class Cube:
                     raise ValueError("Velocity type is not recognised:", self.velocity_type)
                 self.is_V = True
             except:
-                print("Warning  : could not extract velocity")
+                print("Warning : could not extract velocity")
                 self.is_V = False
 
             # beam
@@ -694,14 +694,14 @@ class Cube:
         plt.plot(x, p, **kwargs)
 
         dv = np.abs(self.velocity[2]-self.velocity[1])
-        print("Integreated line flux =", (np.sum(p) - 0.5*(p[0]+p[-1]))*dv)
+        print("Integrated line flux =", (np.sum(p) - 0.5*(p[0]+p[-1]))*dv)
 
         return
 
     # -- computing various "moments"
     def get_moment_map(self, moment=0, v0=0, M0_threshold=None, M8_threshold=None, threshold=None, iv_support=None, v_minmax = None):
         """
-        We use the same comvention as CASA : moment 8 is peak flux, moment 9 is peak velocity
+        We use the same convention as CASA : moment 8 is peak flux, moment 9 is peak velocity
         This returns the moment maps in physical units, ie:
          - M0 is the integrated line flux (Jy/beam . km/s)
          - M1 is the average velocity (km/s)
