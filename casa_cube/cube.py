@@ -1,14 +1,15 @@
 import os
-import numpy as np
-from astropy.io import fits
-import scipy.constants as sc
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-from matplotlib.patches import Ellipse
-from astropy.convolution import Gaussian2DKernel, convolve_fft
-from scipy import ndimage
-import cmasher as cmr
+from copy import deepcopy
 
+import cmasher as cmr
+import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy.constants as sc
+from astropy.convolution import Gaussian2DKernel, convolve_fft
+from astropy.io import fits
+from matplotlib.patches import Ellipse
+from scipy import ndimage
 
 FWHM_to_sigma = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2)))
 arcsec = np.pi / 648000
@@ -201,13 +202,9 @@ class Cube:
             print('cannot open', self.filename)
             return ValueError
 
-
     def cutout(self, filename, FOV=None, ix_min=None, ix_max=None, iv_min=None, iv_max=None, vmin=None, vmax=None, no_pola=False, pmin=None, pmax=None, channels=None, **kwargs):
-
-        import copy
-
-        image = copy.deepcopy(self.image)
-        header = copy.deepcopy(self.header)
+        image = deepcopy(self.image)
+        header = deepcopy(self.header)
 
         ndim = image.ndim
 
