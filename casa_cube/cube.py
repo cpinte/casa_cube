@@ -35,7 +35,7 @@ class Cube:
             try:
                 self.unit = hdu[0].header['BUNIT']
             except:
-                print("Warning: could not find unit")
+                print("Warning: could not find header keyword BUNIT")
                 self.unit = ""
 
             if unit is not None:
@@ -279,9 +279,9 @@ class Cube:
                 header['NAXIS4'] = 1
 
         # trimming cube
-        if (image.ndim == 4):
-            image = image[p_min:p_max,iv_min:iv_max,iy_min:iy_max,ix_min:ix_max]
-        elif (image.ndim == 3):
+        if image.ndim == 4:
+            image = image[pmin:pmax,iv_min:iv_max,iy_min:iy_max,ix_min:ix_max]
+        elif image.ndim == 3:
             image = image[iv_min:iv_max,iy_min:iy_max,ix_min:ix_max]
         else:
             raise ValueError("incorrect dimension in fits file")
