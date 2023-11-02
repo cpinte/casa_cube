@@ -451,6 +451,9 @@ class Cube:
             beam = Gaussian2DKernel(sigma_x, sigma_y, self.bpa * np.pi / 180)
             im = convolve_fft(im, beam)
 
+            # Correcting for beam area
+            im *= taper**2/(self.bmin * self.bmaj)
+
         # --- resampling
         if resample > 0:
             mask = ndimage.zoom(im.mask * 1, resample, order=3)
@@ -509,7 +512,8 @@ class Cube:
             raise ValueError("Unknown unit for axes_units: " + axes_unit)
 
         halfsize = np.asarray(im.shape) / 2 * pix_scale
-        extent = [-halfsize[0]*xaxis_factor-shift_dx, halfsize[0]*xaxis_factor-shift_dx, -halfsize[1]-shift_dy, halfsize[1]-shift_dy]
+
+        extent = [-halfsize[1]*xaxis_factor-shift_dx, halfsize[1]*xaxis_factor-shift_dx, -halfsize[0]-shift_dy, halfsize[0]-shift_dy]
         if axes_unit.lower() == 'pixels' or axes_unit.lower() == 'pixel':
             extent = None
 
