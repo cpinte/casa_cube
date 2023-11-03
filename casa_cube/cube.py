@@ -325,7 +325,7 @@ class Cube:
         M0_threshold=None,
         M8_threshold=None,
         threshold = None,
-        threshold_value = np.NaN,
+        threshold_value=np.nan,
         vlabel_position="bottom",
         vlabel_color="white",
         vlabel_size=8,
@@ -574,7 +574,7 @@ class Cube:
             #divider = make_axes_locatable(ax)
             #cax = divider.append_axes("right", size="5%", pad=0.05)
             #cb = plt.colorbar(image, cax=cax, extend=colorbar_extend)
-            cb = add_colorbar(image)
+            cb = add_colorbar(image, shift=0.01)
 
             # cax,kw = mpl.colorbar.make_axes(ax)
             # cb = plt.colorbar(image,cax=cax, **kw)
