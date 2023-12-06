@@ -574,7 +574,7 @@ class Cube:
             #divider = make_axes_locatable(ax)
             #cax = divider.append_axes("right", size="5%", pad=0.05)
             #cb = plt.colorbar(image, cax=cax, extend=colorbar_extend)
-            cb = add_colorbar(image, shift=0.01)
+            cb = add_colorbar(image)
 
             # cax,kw = mpl.colorbar.make_axes(ax)
             # cb = plt.colorbar(image,cax=cax, **kw)
