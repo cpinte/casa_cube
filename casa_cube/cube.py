@@ -68,7 +68,7 @@ class Cube:
 
                 # SPHERE pixelscales (Maire et al 2016)
                 if instrument == "IFS":
-                    pixelscale = 7.36e-3
+                    pixelscale = 7.46e-3
                 elif instrument == "IRDIS_Y2":
                     pixelscale = 12.283e-3
                 elif instrument == "IRDIS_Y3":
