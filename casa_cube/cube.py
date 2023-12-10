@@ -1,14 +1,15 @@
 import os
-import numpy as np
-from astropy.io import fits
-import scipy.constants as sc
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-from matplotlib.patches import Ellipse
-from astropy.convolution import Gaussian2DKernel, convolve_fft
-from scipy import ndimage
-import cmasher as cmr
+from copy import deepcopy
 
+import cmasher as cmr
+import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy.constants as sc
+from astropy.convolution import Gaussian2DKernel, convolve_fft
+from astropy.io import fits
+from matplotlib.patches import Ellipse
+from scipy import ndimage
 
 FWHM_to_sigma = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2)))
 arcsec = np.pi / 648000
@@ -35,7 +36,7 @@ class Cube:
             try:
                 self.unit = hdu[0].header['BUNIT']
             except:
-                print("Warning: could not find unit")
+                print("Warning: could not find header keyword BUNIT")
                 self.unit = ""
 
             if unit is not None:
@@ -67,7 +68,7 @@ class Cube:
 
                 # SPHERE pixelscales (Maire et al 2016)
                 if instrument == "IFS":
-                    pixelscale = 7.36e-3
+                    pixelscale = 7.46e-3
                 elif instrument == "IRDIS_Y2":
                     pixelscale = 12.283e-3
                 elif instrument == "IRDIS_Y3":
@@ -201,13 +202,9 @@ class Cube:
             print('cannot open', self.filename)
             return ValueError
 
-
     def cutout(self, filename, FOV=None, ix_min=None, ix_max=None, iv_min=None, iv_max=None, vmin=None, vmax=None, no_pola=False, pmin=None, pmax=None, channels=None, **kwargs):
-
-        import copy
-
-        image = copy.deepcopy(self.image)
-        header = copy.deepcopy(self.header)
+        image = deepcopy(self.image)
+        header = deepcopy(self.header)
 
         ndim = image.ndim
 
@@ -279,9 +276,9 @@ class Cube:
                 header['NAXIS4'] = 1
 
         # trimming cube
-        if (image.ndim == 4):
-            image = image[p_min:p_max,iv_min:iv_max,iy_min:iy_max,ix_min:ix_max]
-        elif (image.ndim == 3):
+        if image.ndim == 4:
+            image = image[pmin:pmax,iv_min:iv_max,iy_min:iy_max,ix_min:ix_max]
+        elif image.ndim == 3:
             image = image[iv_min:iv_max,iy_min:iy_max,ix_min:ix_max]
         else:
             raise ValueError("incorrect dimension in fits file")
@@ -328,7 +325,7 @@ class Cube:
         M0_threshold=None,
         M8_threshold=None,
         threshold = None,
-        threshold_value = np.NaN,
+        threshold_value=np.nan,
         vlabel_position="bottom",
         vlabel_color="white",
         vlabel_size=8,
