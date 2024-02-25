@@ -287,7 +287,6 @@ class Cube:
 
         return
 
-
     def writeto(filename, image, header, **kwargs):
         fits.writeto(os.path.normpath(os.path.expanduser(filename)),image.data, header, **kwargs)
 
@@ -671,6 +670,48 @@ class Cube:
         self.last_image = im
 
         return image
+
+    def plot_channels(self,n=20, num=21, ncols=5, iv_min=None, iv_max=None, vmin=None, vmax=None, **kwargs):
+
+        if vmin is not None:
+            iv_min = np.abs(self.velocity - vmin).argmin()
+
+        if vmax is not None:
+            iv_max = np.abs(self.velocity - vmax).argmin()
+
+        if iv_min is None:
+            iv_min = 0
+        if iv_max is None:
+            iv_max = self.nv-1
+
+        nv = iv_max-iv_min
+        dv = nv/n
+
+        nrows = np.ceil(n / ncols).astype(int)
+
+        if (plt.fignum_exists(num)):
+            plt.figure(num)
+            plt.clf()
+        fig, axs = plt.subplots(ncols=ncols, nrows=nrows, figsize=(11, 2*nrows+1),num=num,clear=False)
+
+        for i, ax in enumerate(axs.flatten()):
+
+            if (i%ncols ==0):
+                no_ylabel=False
+            else:
+                no_ylabel=True
+
+            if (i>=ncols*(nrows-1)):
+                no_xlabel = False
+            else:
+                no_xlabel = True
+
+            self.plot(iv=int(iv_min+i*dv), ax=ax, no_xlabel=no_xlabel, no_ylabel=no_ylabel, **kwargs)
+
+        plt.show()
+
+        return
+
 
     def get_line_profile(self,threshold=None, **kwargs):
 
