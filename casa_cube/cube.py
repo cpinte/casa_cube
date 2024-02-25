@@ -344,7 +344,8 @@ class Cube:
         colors=None,
         x_beam = 0.125,
         y_beam = 0.125,
-        mJy=False
+        mJy=False,
+        width=None
     ):
         """
         Plotting routine for continuum image, moment maps and channel maps.
@@ -393,7 +394,28 @@ class Cube:
             else:
                 is_cont = True
 
-            im = self.image[iv, :, :]
+            # Averaging multiple channels
+            v_offset = 0.0
+            dv = np.diff(self.velocity)[0]
+            if width is not None:
+                n_channels = np.maximum(int(np.round(width/dv)),1)
+
+                if n_channels%2: # odd number of channels, same central channel
+                    delta_iv = n_channels//2
+                    iv_min=iv - delta_iv
+                    iv_max=iv + delta_iv+1
+                else: # We will have a small shift compared to initial channel
+                    delta_iv = n_channels//2
+                    iv_min=iv - delta_iv
+                    iv_max=iv + delta_iv
+                    v_offset = -0.5*dv
+
+                print("Averaging between channels", iv_min, "and", iv_max-1, "(included). Width is", self.velocity[iv_max]-self.velocity[iv_min],"km/s")
+
+                im = np.average(self.image[iv_min:iv_max, :, :],axis=0)
+
+            else: # 1 single channel
+                im = self.image[iv, :, :]
             _color_scale = 'lin'
 
 
@@ -616,7 +638,7 @@ class Cube:
                     ax.text(
                         x_vlabel,
                         y_vlabel,
-                        f"v={self.velocity[iv]:<4.2f}$\,$km/s",
+                        f"v={self.velocity[iv]+v_offset:<4.2f}$\,$km/s",
                         horizontalalignment='center',
                         color=vlabel_color,
                         transform=ax.transAxes,
