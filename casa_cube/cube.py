@@ -210,7 +210,7 @@ class Cube:
 
         # ---- Spatial trimming
         if FOV is not None:
-            cutout_pix = int(FOV / self.pixelscale)
+            cutout_pix = int(FOV / self.pixelscale)-1
             while cutout_pix * self.pixelscale < FOV:
                 cutout_pix += 1
                 excess_pix = int(0.5 * (self.nx - cutout_pix))
