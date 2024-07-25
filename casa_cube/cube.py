@@ -210,7 +210,7 @@ class Cube:
 
         # ---- Spatial trimming
         if FOV is not None:
-            cutout_pix = int(FOV / self.pixelscale)
+            cutout_pix = int(FOV / self.pixelscale)-1
             while cutout_pix * self.pixelscale < FOV:
                 cutout_pix += 1
                 excess_pix = int(0.5 * (self.nx - cutout_pix))
@@ -287,7 +287,6 @@ class Cube:
 
         return
 
-
     def writeto(filename, image, header, **kwargs):
         fits.writeto(os.path.normpath(os.path.expanduser(filename)),image.data, header, **kwargs)
 
@@ -346,7 +345,8 @@ class Cube:
         colors=None,
         x_beam = 0.125,
         y_beam = 0.125,
-        mJy=False
+        mJy=False,
+        width=None
     ):
         """
         Plotting routine for continuum image, moment maps and channel maps.
@@ -395,7 +395,28 @@ class Cube:
             else:
                 is_cont = True
 
-            im = self.image[iv, :, :]
+            # Averaging multiple channels
+            v_offset = 0.0
+            dv = np.diff(self.velocity)[0]
+            if width is not None:
+                n_channels = np.maximum(int(np.round(width/dv)),1)
+
+                if n_channels%2: # odd number of channels, same central channel
+                    delta_iv = n_channels//2
+                    iv_min=iv - delta_iv
+                    iv_max=iv + delta_iv+1
+                else: # We will have a small shift compared to initial channel
+                    delta_iv = n_channels//2
+                    iv_min=iv - delta_iv
+                    iv_max=iv + delta_iv
+                    v_offset = -0.5*dv
+
+                print("Averaging between channels", iv_min, "and", iv_max-1, "(included). Width is", self.velocity[iv_max]-self.velocity[iv_min],"km/s")
+
+                im = np.average(self.image[iv_min:iv_max, :, :],axis=0)
+
+            else: # 1 single channel
+                im = self.image[iv, :, :]
             _color_scale = 'lin'
 
 
@@ -621,7 +642,7 @@ class Cube:
                     ax.text(
                         x_vlabel,
                         y_vlabel,
-                        f"v={self.velocity[iv]:<4.2f}$\,$km/s",
+                        f"v={self.velocity[iv]+v_offset:<4.2f}$\,$km/s",
                         horizontalalignment='center',
                         color=vlabel_color,
                         transform=ax.transAxes,
@@ -675,6 +696,48 @@ class Cube:
         self.last_image = im
 
         return image
+
+    def plot_channels(self,n=20, num=21, ncols=5, iv_min=None, iv_max=None, vmin=None, vmax=None, **kwargs):
+
+        if vmin is not None:
+            iv_min = np.abs(self.velocity - vmin).argmin()
+
+        if vmax is not None:
+            iv_max = np.abs(self.velocity - vmax).argmin()
+
+        if iv_min is None:
+            iv_min = 0
+        if iv_max is None:
+            iv_max = self.nv-1
+
+        nv = iv_max-iv_min
+        dv = nv/n
+
+        nrows = np.ceil(n / ncols).astype(int)
+
+        if (plt.fignum_exists(num)):
+            plt.figure(num)
+            plt.clf()
+        fig, axs = plt.subplots(ncols=ncols, nrows=nrows, figsize=(11, 2*nrows+1),num=num,clear=False)
+
+        for i, ax in enumerate(axs.flatten()):
+
+            if (i%ncols ==0):
+                no_ylabel=False
+            else:
+                no_ylabel=True
+
+            if (i>=ncols*(nrows-1)):
+                no_xlabel = False
+            else:
+                no_xlabel = True
+
+            self.plot(iv=int(iv_min+i*dv), ax=ax, no_xlabel=no_xlabel, no_ylabel=no_ylabel, **kwargs)
+
+        plt.show()
+
+        return
+
 
     def get_line_profile(self,threshold=None, **kwargs):
 
