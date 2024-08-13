@@ -345,7 +345,9 @@ class Cube:
         x_beam = 0.125,
         y_beam = 0.125,
         mJy=False,
-        width=None
+        width=None,
+        highpass_filter=0
+
     ):
         """
         Plotting routine for continuum image, moment maps and channel maps.
@@ -539,6 +541,11 @@ class Cube:
 
         if threshold is not None:
             im = np.where(im > threshold, im, threshold_value)
+
+        if highpass_filter > 0:
+            sigma =  self.bmaj / self.pixelscale * FWHM_to_sigma * highpass_filter
+            kernel =  Gaussian2DKernel(sigma, sigma, 0)
+            im -= convolve_fft(im, kernel)
 
         if plot_type=="imshow":
             image = ax.imshow(
