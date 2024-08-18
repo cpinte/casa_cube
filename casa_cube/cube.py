@@ -81,9 +81,9 @@ class Cube:
                     pixelscale = 12.255e-3
                 elif instrument == "IRDIS_H3":
                     pixelscale = 12.250e-3
-                elif instrument == "IRDIS_K2":
+                elif instrument == "IRDIS_K1":
                     pixelscale = 12.267e-3
-                elif instrument == "IRDIS_K3":
+                elif instrument == "IRDIS_K2":
                     pixelscale = 12.263e-3
                 elif instrument == "IRDIS_BB_J":
                     pixelscale = 12.263e-3
@@ -321,6 +321,7 @@ class Cube:
         bpa=None,
         taper=None,
         colorbar_label=True,
+        colorbar_side="right",
         M0_threshold=None,
         M8_threshold=None,
         threshold = None,
@@ -396,8 +397,8 @@ class Cube:
 
             # Averaging multiple channels
             v_offset = 0.0
-            dv = np.diff(self.velocity)[0]
             if width is not None:
+                dv = np.diff(self.velocity)[0]
                 n_channels = np.maximum(int(np.round(width/dv)),1)
 
                 if n_channels%2: # odd number of channels, same central channel
@@ -595,7 +596,10 @@ class Cube:
             #divider = make_axes_locatable(ax)
             #cax = divider.append_axes("right", size="5%", pad=0.05)
             #cb = plt.colorbar(image, cax=cax, extend=colorbar_extend)
-            cb = add_colorbar(image)
+            cb = add_colorbar(image, side=colorbar_side)
+            if colorbar_side == "top":
+                cb.ax.xaxis.set_ticks_position('top')
+                cb.ax.xaxis.set_label_position('top')
 
             # cax,kw = mpl.colorbar.make_axes(ax)
             # cb = plt.colorbar(image,cax=cax, **kw)
@@ -932,13 +936,13 @@ def add_colorbar(mappable, shift=None, width=0.05, ax=None, trim_left=0, trim_ri
 
     if side=="top":
         if shift is None:
-            shift = 0.2
+            shift = 0.02
         cax = fig.add_axes([xmin + trim_left, ymax + shift * dy, dx - trim_left - trim_right, width * dy])
         cax.xaxis.set_ticks_position('top')
         return fig.colorbar(mappable, cax=cax, orientation="horizontal",**kwargs)
     elif side=="right":
         if shift is None:
-            shift = 0.05
+            shift = 0.02
         cax = fig.add_axes([xmax + shift*dx, ymin, width * dx, dy])
         cax.xaxis.set_ticks_position('top')
         return fig.colorbar(mappable, cax=cax, orientation="vertical",**kwargs)
