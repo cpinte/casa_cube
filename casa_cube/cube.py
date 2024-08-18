@@ -397,8 +397,8 @@ class Cube:
 
             # Averaging multiple channels
             v_offset = 0.0
-            dv = np.diff(self.velocity)[0]
             if width is not None:
+                dv = np.diff(self.velocity)[0]
                 n_channels = np.maximum(int(np.round(width/dv)),1)
 
                 if n_channels%2: # odd number of channels, same central channel
