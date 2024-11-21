@@ -321,6 +321,7 @@ class Cube:
         bpa=None,
         taper=None,
         colorbar_label=True,
+        colorbar_side="right",
         M0_threshold=None,
         M8_threshold=None,
         threshold = None,
@@ -346,8 +347,9 @@ class Cube:
         y_beam = 0.125,
         mJy=False,
         width=None,
-        highpass_filter=0
-
+        highpass_filter=0,
+        normalise=False,
+        dynamic_range=None
     ):
         """
         Plotting routine for continuum image, moment maps and channel maps.
@@ -398,7 +400,11 @@ class Cube:
 
             # Averaging multiple channels
             v_offset = 0.0
-            dv = np.diff(self.velocity)[0]
+            try:
+                dv = np.diff(self.velocity)[0]
+            except:
+                dv = None
+
             if width is not None:
                 n_channels = np.maximum(int(np.round(width/dv)),1)
 
@@ -421,6 +427,32 @@ class Cube:
             _color_scale = 'lin'
 
 
+        # --- Convolution by taper
+        if taper is not None:
+            if taper < self.bmaj:
+                print("taper is smaller than bmaj=", self.bmaj)
+                print("No taper applied")
+            else:
+                delta_bmaj = np.sqrt(taper ** 2 - self.bmaj ** 2)
+                bmaj = taper
+
+                delta_bmin = np.sqrt(taper ** 2 - self.bmin ** 2)
+                bmin = taper
+
+                sigma_x = delta_bmin / self.pixelscale * FWHM_to_sigma  # in pixels
+                sigma_y = delta_bmaj / self.pixelscale * FWHM_to_sigma  # in pixels
+
+                print("beam = ", self.bmaj, self.bmin)
+                print("tapper =", delta_bmaj, delta_bmin, self.bpa)
+                print("beam = ",np.sqrt(self.bmaj ** 2 + delta_bmaj ** 2),np.sqrt(self.bmin ** 2 + delta_bmin ** 2))
+
+                beam = Gaussian2DKernel(sigma_x, sigma_y, self.bpa * np.pi / 180)
+                im = convolve_fft(im, beam)
+
+                # Correcting for beam area
+                im *= taper**2/(self.bmin * self.bmaj)
+
+
         if Tb:
             im = self._Jybeam_to_Tb(im)
             unit = "K"
@@ -440,39 +472,8 @@ class Cube:
             im = im / self.pixelscale**2
             unit = unit.replace("pixel-1", "arcsec-2")
 
-        # --- Convolution by taper
-        if taper is not None:
-            if taper < self.bmaj:
-                print("taper is smaller than bmaj=", self.bmaj)
-                delta_bmaj = self.pixelscale * FWHM_to_sigma
-            else:
-                delta_bmaj = np.sqrt(
-                    taper ** 2 - self.bmaj ** 2
-                )  # sigma will be 1 pixel
-                bmaj = taper
-            if taper < self.bmin:
-                print("taper is smaller than bmin=", self.bmin)
-                delta_bmin = self.pixelscale * FWHM_to_sigma
-            else:
-                delta_bmin = np.sqrt(taper ** 2 - self.bmin ** 2)
-                bmin = taper
-
-            sigma_x = delta_bmin / self.pixelscale * FWHM_to_sigma  # in pixels
-            sigma_y = delta_bmaj / self.pixelscale * FWHM_to_sigma  # in pixels
-
-            print("beam = ", self.bmaj, self.bmin)
-            print("tapper =", delta_bmaj, delta_bmin, self.bpa)
-            print(
-                "beam = ",
-                np.sqrt(self.bmaj ** 2 + delta_bmaj ** 2),
-                np.sqrt(self.bmin ** 2 + delta_bmin ** 2),
-            )
-
-            beam = Gaussian2DKernel(sigma_x, sigma_y, self.bpa * np.pi / 180)
-            im = convolve_fft(im, beam)
-
-            # Correcting for beam area
-            im *= taper**2/(self.bmin * self.bmaj)
+        if normalise:
+            im = im/np.max(im)
 
         # --- resampling
         if resample > 0:
@@ -493,13 +494,21 @@ class Cube:
             else:
                 fmin = 0.0
 
+        if dynamic_range is not None:
+            fmin = fmax * dynamic_range
+
+
         # -- set up the color scale
+        print("fminmax=", fmin, fmax)
+
         if color_scale == 'log':
             norm = mcolors.LogNorm(vmin=fmin, vmax=fmax, clip=True)
         elif color_scale == 'lin':
             norm = mcolors.Normalize(vmin=fmin, vmax=fmax, clip=True)
         elif color_scale == 'sqrt':
             norm = mcolors.PowerNorm(0.5, vmin=fmin, vmax=fmax, clip=True)
+        elif color_scale == 'asinh':
+            norm = mcolors.AsinhNorm(vmin=0.5*fmax, vmax=fmax, clip=True)
         else:
             raise ValueError("Unknown color scale: " + color_scale)
 
@@ -602,7 +611,7 @@ class Cube:
             #divider = make_axes_locatable(ax)
             #cax = divider.append_axes("right", size="5%", pad=0.05)
             #cb = plt.colorbar(image, cax=cax, extend=colorbar_extend)
-            cb = add_colorbar(image)
+            cb = add_colorbar(image,side=colorbar_side)
 
             # cax,kw = mpl.colorbar.make_axes(ax)
             # cb = plt.colorbar(image,cax=cax, **kw)
@@ -853,9 +862,54 @@ class Cube:
         return np.sqrt(8*np.log(2)* M2**2 - 2*cs2)
 
 
-    def get_std(self):
+    def get_std(self,taper=0):
+        im1 =self.image[0,:,:]
+        im2 =self.image[-1,:,:]
+
+        # This is ugly copy and paste
+        # --- Convolution by taper
+        if taper < 1e-6: # 0 taper
+            taper = None
+
+        if taper is not None:
+            if taper < self.bmaj:
+                print("taper is smaller than bmaj=", self.bmaj)
+                delta_bmaj = self.pixelscale * FWHM_to_sigma
+            else:
+                delta_bmaj = np.sqrt(taper ** 2 - self.bmaj ** 2)
+                bmaj = taper
+            if taper < self.bmin:
+                print("taper is smaller than bmin=", self.bmin)
+                delta_bmin = self.pixelscale * FWHM_to_sigma
+            else:
+                delta_bmin = np.sqrt(taper ** 2 - self.bmin ** 2)
+                bmin = taper
+
+            sigma_x = delta_bmin / self.pixelscale * FWHM_to_sigma  # in pixels
+            sigma_y = delta_bmaj / self.pixelscale * FWHM_to_sigma  # in pixels
+
+            print("Original beam = ", self.bmaj, self.bmin)
+            print("tapper =", delta_bmaj, delta_bmin, self.bpa)
+            #print(
+            #    "beam = ",
+            #    np.sqrt(self.bmaj ** 2 + delta_bmaj ** 2),
+            #    np.sqrt(self.bmin ** 2 + delta_bmin ** 2),
+            #)
+            self.bmaj = taper
+            self.bmin = taper
+            print("Updated beam = ", self.bmaj, self.bmin)
+
+            beam = Gaussian2DKernel(sigma_x, sigma_y, self.bpa * np.pi / 180)
+
+            im1 = convolve_fft(im1, beam)
+            im2 = convolve_fft(im2, beam)
+
+            # Correcting for beam area
+            im1 *= taper**2/(self.bmin * self.bmaj)
+            im2 *= taper**2/(self.bmin * self.bmaj)
+
         # compute std deviation in image, assumes that no primary beam correction has been applied
-        self.std = np.nanstd(self.image[[0,-1],:,:])
+        self.std = np.nanstd([im1,im2])
 
     # -- Functions to deal the synthesized beam.
     def _beam_area(self):
