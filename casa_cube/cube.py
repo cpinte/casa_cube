@@ -349,7 +349,9 @@ class Cube:
         width=None,
         highpass_filter=0,
         normalise=False,
-        dynamic_range=None
+        dynamic_range=None,
+        hpf=False,
+        **kwargs
     ):
         """
         Plotting routine for continuum image, moment maps and channel maps.
@@ -374,7 +376,10 @@ class Cube:
                 hdu = fits.open(moment_fname)
                 im = hdu[0].data
             else:
-                im = self.get_moment_map(moment=moment, v0=v0, M0_threshold=M0_threshold, M8_threshold=M8_threshold, threshold=threshold, iv_support=iv_support, v_minmax=v_minmax)
+                if hpf:
+                    im = self.get_high_pass_filter_map(moment=moment, v0=v0, M0_threshold=M0_threshold, M8_threshold=M8_threshold, threshold=threshold, iv_support=iv_support, v_minmax=v_minmax, **kwargs)
+                else:
+                    im = self.get_moment_map(moment=moment, v0=v0, M0_threshold=M0_threshold, M8_threshold=M8_threshold, threshold=threshold, iv_support=iv_support, v_minmax=v_minmax)
             _color_scale = 'lin'
         elif vturb:
             is_cont = False
@@ -842,6 +847,48 @@ class Cube:
 
         return M
 
+
+    def get_high_pass_filter_map(self, moment=None, w0=None, gamma=0,  **kwargs):
+
+        from scipy.ndimage.filters import gaussian_filter
+
+        if w0 is None:
+            raise ValueError("Please provide w0 for filter in sarcsec")
+
+        # Original data
+        M = self.get_moment_map(moment=moment,  **kwargs)
+        X, Y = self.xaxis.copy(), self.xaxis.copy()
+
+
+        if gamma != 0:
+            # Stretch the original grid by desired radial stretch
+            R = np.hypot(X, Y)
+            x = X * (R**(gamma))
+            y = Y * (R**(gamma))
+
+            # Prepare interp function of input data on original grid
+            f = interpolate.interp2d(X, Y, M, kind='cubic')
+
+            # Interpolate input data onto radially stretched grid
+            stretched_map = f(x, y)
+        else:
+            # No strectching
+            stretched_map = M
+
+        # Perform convolution on warped data and subtract result to get residual
+        background = gaussian_filter(stretched_map, sigma=w0/self.pixelscale)
+        highpass_residual = stretched_map - background
+
+        if gamma != 0:
+            # We reinterpolate back
+            f = interpolate.interp2d(x, y, highpass_residual, kind='cubic')
+            output_map = f(X,Y)
+        else:
+            output_map = highpass_residual
+
+        return output_map
+
+
     def get_fwhm(self, v0=0, M0_threshold=None):
 
         M2 = get_moment_map(self, moment=2, v0=v0, M0_threshold=M0_threshold)
@@ -966,6 +1013,7 @@ class Cube:
             zi = z[y.astype(np.int), x.astype(np.int)]
 
         return x,y,zi
+
 
 
 def add_colorbar(mappable, shift=None, width=0.05, ax=None, trim_left=0, trim_right=0, side="right",**kwargs):
