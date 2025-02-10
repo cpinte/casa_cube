@@ -8,6 +8,7 @@ import numpy as np
 import scipy.constants as sc
 from astropy.convolution import Gaussian2DKernel, convolve_fft
 from astropy.io import fits
+from astropy.wcs import WCS
 from matplotlib.patches import Ellipse
 from scipy import ndimage
 
@@ -351,6 +352,7 @@ class Cube:
         normalise=False,
         dynamic_range=None,
         hpf=False,
+        use_wcs=False,
         **kwargs
     ):
         """
@@ -527,29 +529,46 @@ class Cube:
             cmap = None
 
 
-        if axes_unit.lower() == 'arcsec':
-            pix_scale = self.pixelscale
-            xlabel = r'$\Delta$ RA (")'
-            ylabel = r'$\Delta$ Dec (")'
-            xaxis_factor = -1
-        elif axes_unit.lower() == 'au':
-            pix_scale = self.pixelscale * self.P.map.distance
-            xlabel = 'Distance from star (au)'
-            ylabel = 'Distance from star (au)'
-            xaxis_factor = 1
-        elif axes_unit.lower() == 'pixels' or axes_unit.lower() == 'pixel':
-            pix_scale = 1
-            xlabel = r'x (pix)'
-            ylabel = r'y (pix)'
-            xaxis_factor = 1
-        else:
-            raise ValueError("Unknown unit for axes_units: " + axes_unit)
-
-        halfsize = np.asarray(im.shape) / 2 * pix_scale
-
-        extent = [-halfsize[1]*xaxis_factor-shift_dx, halfsize[1]*xaxis_factor-shift_dx, -halfsize[0]-shift_dy, halfsize[0]-shift_dy]
-        if axes_unit.lower() == 'pixels' or axes_unit.lower() == 'pixel':
+        # option to use WCS coordinates
+        if use_wcs:
+            # Get figure and position from existing axis
+            fig = ax.figure
+            pos = ax.get_position()
+            # Remove the existing axis
+            ax.remove()
+            # Create new WCS axis in the same position
+            ax = fig.add_subplot(projection=WCS(self.header).celestial)
+            ax.set_position(pos)
+            xlabel = 'RA (J2000)'
+            ylabel = 'Dec (J2000)'
+            ax.coords[0].set_axislabel(xlabel)
+            ax.coords[1].set_axislabel(ylabel)
+            ax.set_frame_on(False)
             extent = None
+        else:
+            if axes_unit.lower() == 'arcsec':
+                pix_scale = self.pixelscale
+                xlabel = r'$\Delta$ RA (")'
+                ylabel = r'$\Delta$ Dec (")'
+                xaxis_factor = -1
+            elif axes_unit.lower() == 'au':
+                pix_scale = self.pixelscale * self.P.map.distance
+                xlabel = 'Distance from star (au)'
+                ylabel = 'Distance from star (au)'
+                xaxis_factor = 1
+            elif axes_unit.lower() == 'pixels' or axes_unit.lower() == 'pixel':
+                pix_scale = 1
+                xlabel = r'x (pix)'
+                ylabel = r'y (pix)'
+                xaxis_factor = 1
+            else:
+                raise ValueError("Unknown unit for axes_units: " + axes_unit)
+
+            halfsize = np.asarray(im.shape) / 2 * pix_scale
+
+            extent = [-halfsize[1]*xaxis_factor-shift_dx, halfsize[1]*xaxis_factor-shift_dx, -halfsize[0]-shift_dy, halfsize[0]-shift_dy]
+            if axes_unit.lower() == 'pixels' or axes_unit.lower() == 'pixel':
+                extent = None
 
         self.extent = extent
 
@@ -600,8 +619,20 @@ class Cube:
             limits = [limit, -limit, -limit, limit]
 
         if limits is not None:
-            ax.set_xlim(limits[0], limits[1])
-            ax.set_ylim(limits[2], limits[3])
+            if use_wcs:
+                wcs = WCS(self.header).celestial
+                # Convert world coordinates (RA/Dec) to pixel coordinates
+                pixels = wcs.wcs_world2pix(
+                    [[limits[0], limits[2]], [limits[1], limits[3]]],
+                    0
+                )
+                x1, y1 = pixels[0]  # First point (ra_max, dec_min)
+                x2, y2 = pixels[1]  # Second point (ra_min, dec_max)
+                ax.set_xlim(x1, x2)
+                ax.set_ylim(y1, y2)
+            else:
+                ax.set_xlim(limits[0], limits[1])
+                ax.set_ylim(limits[2], limits[3])
 
         if not no_xlabel:
             ax.set_xlabel(xlabel)
