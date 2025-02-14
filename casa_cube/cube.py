@@ -11,6 +11,7 @@ from astropy.io import fits
 from astropy.wcs import WCS
 from matplotlib.patches import Ellipse
 from scipy import ndimage
+from warnings import catch_warnings, simplefilter
 
 FWHM_to_sigma = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2)))
 arcsec = np.pi / 648000
@@ -50,12 +51,23 @@ class Cube:
             if self.unit == "JY/PIXEL": # radmc format
                 self.unit = "Jy pixel-1"
 
+            # Suppress warnings when creating WCS
+            with catch_warnings():
+                simplefilter("ignore")  # Ignore all warnings
+                try:
+                    self.wcs = WCS(self.header).celestial
+                except Exception as e:
+                    print(f"Warning: could not create WCS - {e}")
+                    self.wcs = None
 
             # pixel info
             self.nx = hdu[0].header['NAXIS1']
             self.ny = hdu[0].header['NAXIS2']
             try:
-                self.pixelscale = hdu[0].header['CDELT2'] * 3600 # arcsec
+                try:
+                   self.pixelscale = hdu[0].header['CDELT2'] * 3600 # arcsec
+                except KeyError:
+                   self.pixelscale = abs(hdu[0].header['CD2_2']) * 3600
                 self.cx = hdu[0].header['CRPIX1']
                 self.cy = hdu[0].header['CRPIX2']
                 self.x_ref = hdu[0].header['CRVAL1']  # coordinate
@@ -352,7 +364,6 @@ class Cube:
         normalise=False,
         dynamic_range=None,
         hpf=False,
-        use_wcs=False,
         **kwargs
     ):
         """
@@ -362,6 +373,9 @@ class Cube:
 
         if ax is None:
             ax = plt.gca()
+
+        # Automatically check if the plot has been opened with projection='wcs'
+        use_wcs = hasattr(ax, 'coords') and ax.coords is not None
 
         unit = self.unit
 
@@ -531,14 +545,6 @@ class Cube:
 
         # option to use WCS coordinates
         if use_wcs:
-            # Get figure and position from existing axis
-            fig = ax.figure
-            pos = ax.get_position()
-            # Remove the existing axis
-            ax.remove()
-            # Create new WCS axis in the same position
-            ax = fig.add_subplot(projection=WCS(self.header).celestial)
-            ax.set_position(pos)
             xlabel = 'RA (J2000)'
             ylabel = 'Dec (J2000)'
             ax.coords[0].set_axislabel(xlabel)
