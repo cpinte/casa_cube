@@ -8,8 +8,10 @@ import numpy as np
 import scipy.constants as sc
 from astropy.convolution import Gaussian2DKernel, convolve_fft
 from astropy.io import fits
+from astropy.wcs import WCS
 from matplotlib.patches import Ellipse
 from scipy import ndimage
+from warnings import catch_warnings, simplefilter
 
 FWHM_to_sigma = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2)))
 arcsec = np.pi / 648000
@@ -49,12 +51,23 @@ class Cube:
             if self.unit == "JY/PIXEL": # radmc format
                 self.unit = "Jy pixel-1"
 
+            # Suppress warnings when creating WCS
+            with catch_warnings():
+                simplefilter("ignore")  # Ignore all warnings
+                try:
+                    self.wcs = WCS(self.header).celestial
+                except Exception as e:
+                    print(f"Warning: could not create WCS - {e}")
+                    self.wcs = None
 
             # pixel info
             self.nx = hdu[0].header['NAXIS1']
             self.ny = hdu[0].header['NAXIS2']
             try:
-                self.pixelscale = hdu[0].header['CDELT2'] * 3600 # arcsec
+                try:
+                   self.pixelscale = hdu[0].header['CDELT2'] * 3600 # arcsec
+                except KeyError:
+                   self.pixelscale = abs(hdu[0].header['CD2_2']) * 3600
                 self.cx = hdu[0].header['CRPIX1']
                 self.cy = hdu[0].header['CRPIX2']
                 self.x_ref = hdu[0].header['CRVAL1']  # coordinate
@@ -361,6 +374,9 @@ class Cube:
         if ax is None:
             ax = plt.gca()
 
+        # Automatically check if the plot has been opened with projection='wcs'
+        use_wcs = hasattr(ax, 'coords') and ax.coords is not None
+
         unit = self.unit
 
         if self.nv == 1:  # continuum image
@@ -527,29 +543,38 @@ class Cube:
             cmap = None
 
 
-        if axes_unit.lower() == 'arcsec':
-            pix_scale = self.pixelscale
-            xlabel = r'$\Delta$ RA (")'
-            ylabel = r'$\Delta$ Dec (")'
-            xaxis_factor = -1
-        elif axes_unit.lower() == 'au':
-            pix_scale = self.pixelscale * self.P.map.distance
-            xlabel = 'Distance from star (au)'
-            ylabel = 'Distance from star (au)'
-            xaxis_factor = 1
-        elif axes_unit.lower() == 'pixels' or axes_unit.lower() == 'pixel':
-            pix_scale = 1
-            xlabel = r'x (pix)'
-            ylabel = r'y (pix)'
-            xaxis_factor = 1
-        else:
-            raise ValueError("Unknown unit for axes_units: " + axes_unit)
-
-        halfsize = np.asarray(im.shape) / 2 * pix_scale
-
-        extent = [-halfsize[1]*xaxis_factor-shift_dx, halfsize[1]*xaxis_factor-shift_dx, -halfsize[0]-shift_dy, halfsize[0]-shift_dy]
-        if axes_unit.lower() == 'pixels' or axes_unit.lower() == 'pixel':
+        # option to use WCS coordinates
+        if use_wcs:
+            xlabel = 'RA (J2000)'
+            ylabel = 'Dec (J2000)'
+            ax.coords[0].set_axislabel(xlabel)
+            ax.coords[1].set_axislabel(ylabel)
+            ax.set_frame_on(False)
             extent = None
+        else:
+            if axes_unit.lower() == 'arcsec':
+                pix_scale = self.pixelscale
+                xlabel = r'$\Delta$ RA (")'
+                ylabel = r'$\Delta$ Dec (")'
+                xaxis_factor = -1
+            elif axes_unit.lower() == 'au':
+                pix_scale = self.pixelscale * self.P.map.distance
+                xlabel = 'Distance from star (au)'
+                ylabel = 'Distance from star (au)'
+                xaxis_factor = 1
+            elif axes_unit.lower() == 'pixels' or axes_unit.lower() == 'pixel':
+                pix_scale = 1
+                xlabel = r'x (pix)'
+                ylabel = r'y (pix)'
+                xaxis_factor = 1
+            else:
+                raise ValueError("Unknown unit for axes_units: " + axes_unit)
+
+            halfsize = np.asarray(im.shape) / 2 * pix_scale
+
+            extent = [-halfsize[1]*xaxis_factor-shift_dx, halfsize[1]*xaxis_factor-shift_dx, -halfsize[0]-shift_dy, halfsize[0]-shift_dy]
+            if axes_unit.lower() == 'pixels' or axes_unit.lower() == 'pixel':
+                extent = None
 
         self.extent = extent
 
@@ -600,8 +625,20 @@ class Cube:
             limits = [limit, -limit, -limit, limit]
 
         if limits is not None:
-            ax.set_xlim(limits[0], limits[1])
-            ax.set_ylim(limits[2], limits[3])
+            if use_wcs:
+                wcs = WCS(self.header).celestial
+                # Convert world coordinates (RA/Dec) to pixel coordinates
+                pixels = wcs.wcs_world2pix(
+                    [[limits[0], limits[2]], [limits[1], limits[3]]],
+                    0
+                )
+                x1, y1 = pixels[0]  # First point (ra_max, dec_min)
+                x2, y2 = pixels[1]  # Second point (ra_min, dec_max)
+                ax.set_xlim(x1, x2)
+                ax.set_ylim(y1, y2)
+            else:
+                ax.set_xlim(limits[0], limits[1])
+                ax.set_ylim(limits[2], limits[3])
 
         if not no_xlabel:
             ax.set_xlabel(xlabel)

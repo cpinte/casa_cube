@@ -41,3 +41,12 @@ import casa_cube as casa
 obs = casa.Cube('HD169142_2015-05-03_Q_phi.fits',pixelscale=0.01225)
 obs.plot()
 ```
+
+## How to plot with RA and Dec on axes instead of relative offsets from image centre
+```
+import casa_cube as casa
+
+obs = casa.Cube('IMLup_continuum.fits')
+ax = plt.subplot(1,1,1,projection=obs.wcs)
+obs.plot(ax)
+```
