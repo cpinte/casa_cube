@@ -2,7 +2,7 @@
 
 casa_cube is a python package that provides an interface to data cubes generates by CASA or Gildas.
 
-[![Documentation Status](https://readthedocs.org/projects/casa_cube/badge/?version=latest)](https://casa_cube.readthedocs.io/en/latest/)
+[![Documentation Status](https://readthedocs.org/projects/casa-cube/badge/?version=latest)](https://casa-cube.readthedocs.io/en/latest/)
 
 It allows the user to perform simple tasks such plotting given channel maps, moment maps, line profile in various units, correcting for cloud extinction, reconvolving with a beam taper, triming a cube ...
 The syntax is similar to pymcfost to perform quick and easy comparison with models.
