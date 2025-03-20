@@ -117,12 +117,36 @@ You can access and manipulate beam information:
    beam_area = cube._beam_area()  # in arcsec^2
    beam_area_pix = cube._beam_area_pix()  # in pixels^2
 
+
+
+Working with scattered light images
+----------------
+
+You can specify the pixelscale if it is missing in the header
+
+.. code-block:: python
+
+   obs = casa.Cube('HD169142_2015-05-03_Q_phi.fits',pixelscale=0.01225)
+   obs.plot()
+
+
+Plotting with  RA and Dec on axes instead of relative offsets from image centre
+----------------
+
+.. code-block:: python
+
+   obs = casa.Cube('IMLup_continuum.fits')
+   ax = plt.subplot(1,1,1,projection=obs.wcs)
+   obs.plot(ax)
+
+
+
 Advanced Features
 ---------------
 
 * Tapering: Apply Gaussian tapering to the data
 * Dynamic range: Control the dynamic range of plots
 * Custom color scales: Use different color scales for different types of data
-* Coordinate systems: Work with different coordinate systems (arcsec, AU, pixels)
+* Coordinate systems: Work with different coordinate systems (arcsec, au, pixels)
 
-For more examples and advanced usage, see the :doc:`examples` section. 
+For more examples and advanced usage, see the :doc:`examples` section.
