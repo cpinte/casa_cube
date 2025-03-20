@@ -20,11 +20,31 @@ default_cmap = cmr.arctic
 
 class Cube:
     def __init__(self, filename, only_header=False, correct_fct=None, unit=None, pixelscale=None, restfreq=None, zoom=None, **kwargs):
+        """
+        Initialize a Cube object.
+
+        Args:
+            filename (str): The path to the FITS file containing the cube data.
+            only_header (bool): If True, only read the header and not the data.
 
         self.filename = os.path.normpath(os.path.expanduser(filename))
         self._read(**kwargs, only_header=only_header, correct_fct=correct_fct, unit=unit, pixelscale=pixelscale, restfreq=restfreq, zoom=zoom)
+        """
 
     def _read(self, only_header=False, correct_fct=None, unit=None, pixelscale=None, instrument=None, restfreq=None, zoom=None):
+        """
+        Read the FITS file and initialize the Cube object.
+
+        Args:
+            only_header (bool): If True, only read the header and not the data.
+            correct_fct (array-like): Array of correction factors for the data.
+            unit (str): The unit of the data.
+            pixelscale (float): The pixel scale in arcsec.
+            instrument (str): The instrument used to acquire the data.
+            restfreq (float): The rest frequency of the data in Hz.
+            zoom (float): The zoom factor for the data.
+        """
+
         try:
             hdu = fits.open(self.filename)
             self.header = hdu[0].header
@@ -33,6 +53,7 @@ class Cube:
             try:
                 self.object = hdu[0].header['OBJECT']
             except:
+                print("Warning: could not find header keyword OBJECT")
                 self.object = ""
 
             try:
@@ -216,6 +237,25 @@ class Cube:
             return ValueError
 
     def cutout(self, filename, FOV=None, ix_min=None, ix_max=None, iv_min=None, iv_max=None, vmin=None, vmax=None, no_pola=False, pmin=None, pmax=None, channels=None, **kwargs):
+        """
+        Cut out a region (in space, frequency and polarization) of the cube and save it as a new FITS file.
+
+        Args:
+            filename (str): The path to the output FITS file.
+            FOV (float): The field of view in arcsec.
+            ix_min (int): The minimum index of the x-axis.
+            ix_max (int): The maximum index of the x-axis.
+            iv_min (int): The minimum index of the velocity axis.
+            iv_max (int): The maximum index of the velocity axis.
+            vmin (float): The minimum velocity in km/s.
+            vmax (float): The maximum velocity in km/s.
+            no_pola (bool): If True, only keep the first polarization.
+            pmin (int): The minimum index of the polarization axis.
+            pmax (int): The maximum index of the polarization axis.
+            channels (list): The list of channels to keep.
+            **kwargs: Additional keyword arguments for the fits.writeto function.
+        """
+
         image = deepcopy(self.image)
         header = deepcopy(self.header)
 
@@ -302,7 +342,14 @@ class Cube:
 
 
     def tapered_fits(self, filename, taper=None, **kwargs):
-        # Create a tapered version of a fits file
+        """
+        Create a tapered version of a fits file.
+
+        Args:
+            filename (str): The path to the output FITS file.
+            taper (float): The taper size in arcsec.
+            **kwargs: Additional keyword arguments for the fits.writeto function.
+        """
 
         if taper is None:
             raise ValueError("taper is needed")
@@ -350,7 +397,9 @@ class Cube:
 
 
     def sensitivity(self):
-        # Sensitivity in K
+        """
+        Calculate the sensitivity of the cube (in K).
+        """
 
         self.get_std()
         T = self._Jybeam_to_Tb(self.std,RJ=True)
@@ -359,6 +408,10 @@ class Cube:
 
 
     def writeto(filename, image, header, **kwargs):
+        """
+        Write the cube to a FITS file.
+        """
+
         fits.writeto(os.path.normpath(os.path.expanduser(filename)),image.data, header, **kwargs)
 
     def plot(
@@ -426,6 +479,68 @@ class Cube:
     ):
         """
         Plotting routine for continuum image, moment maps and channel maps.
+
+        Args:
+            iv (int): The index of the velocity channel to plot.
+            v (float): The velocity in km/s.
+            colorbar (bool): Whether to plot the colorbar.
+            plot_beam (bool): Whether to plot the beam.
+            color_scale (str): The color scale to use.
+            fmin (float): The minimum value of the color scale.
+            fmax (float): The maximum value of the color scale.
+            limit (float): The limit of the color scale.
+            limits (list): The limits of the color scale.
+            moment (int): The moment to plot.
+            moment_fname (str): The filename of the moment map.
+            vturb (bool): Whether to plot the turbulent velocity.
+            Tb (bool): Whether to plot the brightness temperature.
+            cmap (str): The colormap to use.
+            v0 (float): The central velocity.
+            dv (float): The velocity width.
+            ax (matplotlib.axes.Axes): The axes to plot on.
+            no_ylabel (bool): Whether to hide the y-axis label.
+            no_xlabel (bool): Whether to hide the x-axis label.
+            no_vlabel (bool): Whether to hide the velocity label.
+            title (str): The title of the plot.
+            alpha (float): The alpha value of the plot.
+            interpolation (str): The interpolation method to use.
+            resample (int): The resampling factor.
+            bmaj (float): The major axis of the beam.
+            bmin (float): The minor axis of the beam.
+            bpa (float): The position angle of the beam.
+            taper (float): The taper size.
+            colorbar_label (bool): Whether to show the colorbar label.
+            colorbar_side (str): The side of the colorbar to plot.
+            M0_threshold (float): The threshold for the M0 moment map.
+            M8_threshold (float): The threshold for the M8 moment map.
+            threshold (float): The threshold for the plot.
+            threshold_value (float): The value to use for the threshold.
+            vlabel_position (str): The position of the velocity label.
+            vlabel_color (str): The color of the velocity label.
+            vlabel_size (int): The size of the velocity label.
+            shift_dx (float): The shift in the x-direction.
+            shift_dy (float): The shift in the y-direction.
+            mol_weight (str): The molecular weight to use.
+            iv_support (list): The indices of the velocity channels to support.
+            v_minmax (list): The minimum and maximum velocities to plot.
+            axes_unit (str): The unit of the axes.
+            quantity_name (str): The name of the quantity to plot.
+            stellar_mask (str): The filename of the stellar mask.
+            levels (int): The number of levels for the contour plot.
+            plot_type (str): The type of plot to make.
+            linewidths (list): The linewidths for the contour plot.
+            zorder (int): The zorder for the plot.
+            per_arcsec2 (bool): Whether to plot the quantity per arcsec^2.
+            colors (list): The colors for the contour plot.
+            x_beam (float): The x-axis beam size.
+            y_beam (float): The y-axis beam size.
+            mJy (bool): Whether to plot the quantity in mJy.
+            width (float): The width of the plot.
+            highpass_filter (float): The highpass filter to apply.
+            normalise (bool): Whether to normalise the plot.
+            dynamic_range (float): The dynamic range of the plot.
+            hpf (bool): Whether to apply a highpass filter.
+            **kwargs: Additional keyword arguments for the plot.
         """
 
 
@@ -667,7 +782,7 @@ class Cube:
                 zorder=zorder
             )
         elif plot_type=="contour":
-            image = ax.contour(
+            imagee = ax.contour(
                 im,
                 extent=extent,
                 origin='lower',
@@ -704,7 +819,7 @@ class Cube:
             ax.set_ylabel(ylabel)
 
         if title is not None:
-            ax.set_title(title)
+            axe.set_title(title)
 
         # -- Color bar
         if colorbar:
@@ -810,6 +925,19 @@ class Cube:
         return image
 
     def plot_channels(self,n=20, num=21, ncols=5, iv_min=None, iv_max=None, vmin=None, vmax=None, **kwargs):
+        """
+        Plot the channels of the cube.
+
+        Args:
+            n (int): The number of channels to plot.
+            num (int): The figure number.
+            ncols (int): The number of columns in the plot.
+            iv_min (int): The minimum index of the velocity channel to plot.
+            iv_max (int): The maximum index of the velocity channel to plot.
+            vmin (float): The minimum velocity to plot.
+            vmax (float): The maximum velocity to plot.
+            **kwargs: Additional keyword arguments for the plot.
+        """
 
         if vmin is not None:
             iv_min = np.abs(self.velocity - vmin).argmin()
@@ -852,6 +980,13 @@ class Cube:
 
 
     def get_line_profile(self,threshold=None, **kwargs):
+        """
+        Get the line profile of the cube.
+
+        Args:
+            threshold (float): The threshold for the line profile.
+            **kwargs: Additional keyword arguments for the plot.
+        """
 
         cube = self.image[:,:,:]
         if threshold is not None:
@@ -861,6 +996,15 @@ class Cube:
         return profile
 
     def plot_line(self,x_axis="velocity", threshold=None, ax=None, **kwargs):
+        """
+        Plot the line profile of the cube.
+
+        Args:
+            x_axis (str): The axis to plot on.
+            threshold (float): The threshold for the line profile.
+            ax (matplotlib.axes.Axes): The axes to plot on.
+            **kwargs: Additional keyword arguments for the plot.
+        """
 
         if ax is None:
             ax = plt.gca()
@@ -884,6 +1028,17 @@ class Cube:
     # -- computing various "moments"
     def get_moment_map(self, moment=0, v0=0, M0_threshold=None, M8_threshold=None, threshold=None, iv_support=None, v_minmax = None):
         """
+        Calculate the moment map of the cube.
+
+        Args:
+            moment (int): The moment to calculate.
+            v0 (float): The central velocity.
+            M0_threshold (float): The threshold for the M0 moment map.
+            M8_threshold (float): The threshold for the M8 moment map.
+            threshold (float): The threshold for the moment map.
+            iv_support (list): The indices of the velocity channels to support.
+            v_minmax (list): The minimum and maximum velocities to plot.
+
         We use the same convention as CASA : moment 8 is peak flux, moment 9 is peak velocity
         This returns the moment maps in physical units, ie:
          - M0 is the integrated line flux (Jy/beam . km/s)
@@ -947,8 +1102,16 @@ class Cube:
 
 
     def get_high_pass_filter_map(self, moment=None, w0=None, gamma=0,  **kwargs):
-        # Perform a Gaussian high pass filter on a moment map, w0 is in arcsec
-        # with an optional radial stretch exponent gamma
+        """
+        Perform a Gaussian high pass filter on a moment map.
+        w0 is in arcsec, with an optional radial stretch exponent gamma
+
+        Args:
+            moment (int): The moment to use for the high pass filter.
+            w0 (float): The width of the Gaussian filter in arcsec.
+            gamma (float): The radial stretch exponent.
+            **kwargs: Additional keyword arguments for the moment map.
+        """
 
         from scipy.ndimage.filters import gaussian_filter
 
@@ -990,12 +1153,26 @@ class Cube:
 
 
     def get_fwhm(self, v0=0, M0_threshold=None):
+        """
+        Get the line FWHM of the cube.
+
+        Args:
+            v0 (float): The central velocity.
+            M0_threshold (float): The threshold for the M0 moment map.
+        """
 
         M2 = get_moment_map(self, moment=2, v0=v0, M0_threshold=M0_threshold)
 
         return np.sqrt(8*np.log(2)) * M2
 
     def get_vturb(self, v0=0, M0_threshold=None, threshold=None, mol_weight=None):
+        """
+        Get the turbulent linewidth of the cube.
+
+        Args:
+            v0 (float): The central velocity.
+            M0_threshold (float): The threshold for the M0 moment map.
+        """
 
         if mol_weight is None:
             raise ValueError("mol_weight needs to be provided")
@@ -1010,6 +1187,13 @@ class Cube:
 
 
     def get_std(self,taper=0):
+        """
+        Get the standard deviation of the cube.
+
+        Args:
+            taper (float): The taper for the beam.
+        """
+
         im1 =self.image[0,0:30,0:30]
         im2 =self.image[-1,0:30,0:30]
 
@@ -1072,6 +1256,7 @@ class Cube:
         return self._beam_area() * arcsec ** 2
 
     def _pixel_area(self):
+        """Pixel area in arcsec^2"""
         return self.pixelscale ** 2
 
     def _beam_area_pix(self):
@@ -1113,7 +1298,7 @@ class Cube:
             zi = ndimage.map_coordinates(z, np.vstack((y,x)))
 
         else:
-            # Extract the values along the line at the pixel spacing
+            # Extract the valuees along the line at the pixel spacing
             length = int(np.hypot(x1-x0, y1-y0))
             x, y = np.linspace(x0, x1, length), np.linspace(y0, y1, length)
             zi = z[y.astype(np.int), x.astype(np.int)]
@@ -1122,6 +1307,16 @@ class Cube:
 
 
     def explore(self,num=None):
+        """
+        Quickly explore the cube.
+           - plot line profile
+           - plot peak brightness
+           - comvert frequency to line and molecule name
+
+        Args:
+            num (int): The figure number.
+        """
+
         # Quick preview function of a cube
 
         filename = self.filename
@@ -1207,6 +1402,19 @@ line_list = {
 
 
 def add_colorbar(mappable, shift=None, width=0.05, ax=None, trim_left=0, trim_right=0, side="right",**kwargs):
+    """
+    Add a color bar to a plot.
+
+    Args:
+        mappable (matplotlib.cm.ScalarMappable): The mappable object to add the color bar to.
+        shift (float): The shift for the color bar.
+        width (float): The width of the color bar.
+        ax (matplotlib.axes.Axes): The axes to add the color bar to.
+        trim_left (float): The left trim for the color bar.
+        trim_right (float): The right trim for the color bar.
+        side (str): The side of the color bar.
+    """
+
     # creates a color bar that does not shrink the main plot or panel
     # only works for horizontal bars so far
 
