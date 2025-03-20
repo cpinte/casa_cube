@@ -860,7 +860,10 @@ class Cube:
 
         return profile
 
-    def plot_line(self,x_axis="velocity", threshold=None, **kwargs):
+    def plot_line(self,x_axis="velocity", threshold=None, ax=None, **kwargs):
+
+        if ax is None:
+            ax = plt.gca()
 
         if x_axis == "channel":
             x = np.arange(self.nv)
@@ -871,7 +874,7 @@ class Cube:
 
         p = self.get_line_profile(threshold=threshold)
 
-        plt.plot(x, p, **kwargs)
+        ax.plot(x, p, **kwargs)
 
         dv = np.abs(self.velocity[2]-self.velocity[1])
         print("Integrated line flux =", (np.sum(p) - 0.5*(p[0]+p[-1]))*dv)
@@ -1116,6 +1119,90 @@ class Cube:
             zi = z[y.astype(np.int), x.astype(np.int)]
 
         return x,y,zi
+
+
+    def explore(self,num=None):
+        # Quick preview function of a cube
+
+        filename = self.filename
+        k = filename.find('spw')
+        spw = filename[k:k+5]
+
+        freq = self.restfreq/1e9
+
+        # Storing line, molecule and object names
+        self.line = line_list[freq]
+        self.mol = self.line[0:self.line.find(" ")]
+        self.object = self.header['OBJECT']
+
+        # Making preview plot
+        fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(20, 6), num=num,  clear=False)
+        plt.subplots_adjust(hspace=0.01,wspace=0.01)
+
+
+        # line profile
+        ax = axes[0]
+        self.plot_line(ax=ax)
+
+        ax.text(0.02,0.95,self.object,
+                horizontalalignment='left',size=12,
+                color="black",
+                transform=ax.transAxes,
+                )
+
+
+        ax.text(0.02,0.9,self.line,
+                horizontalalignment='left',size=12,
+                color="black",
+                transform=ax.transAxes,
+                )
+
+        label=f"$\\nu=${freq:<10.6f}Ghz"
+        ax.text(0.98,0.95,label,
+                horizontalalignment='right',size=12,
+                color="black",
+                transform=ax.transAxes,
+                )
+
+        ax.text(0.98,0.9,spw,
+                horizontalalignment='right',size=12,
+                color="black",
+                transform=ax.transAxes,
+                )
+
+        # Moment 8
+        ax=axes[1]
+        self.plot(ax=ax,moment=8, Tb=True) #32, 23, 20
+
+        ax.text(0.02,0.95,"Peak brightness",
+                horizontalalignment='left',size=12,
+                color="white",
+                transform=ax.transAxes,
+                )
+
+        return
+
+
+# spatalogue astropy api is currently broken
+#Splatalogue.query_lines(f*(1-1e-6)*u.GHz, f*(1+1e-6)*u.GHz)
+# doing it by hand for now
+line_list = {
+    265.886431 : "HCN v=0 J=3-2"                    ,
+    265.759438 : "c-HCCCH v=0 4(4,1)-3(3,0)"        ,
+    265.289650 : "CH3OH v t=0 6(1,5)-5(2,3)"        ,
+    264.2701294 : "H2CO 10(1,9)-10(1,10)"            ,
+    262.2569057 : "SO2 v=0 11(3,9)-11(2,10)"         ,
+    262.064986 : "CCH v=0 N=3-2, J=5/2-3/2, F=3-2" ,
+    262.004260 : "CCH v=0 N=3-2, J=7/2-5/2, F=4-3" ,
+    261.843721 : "SO 3Σ v=0 7(6)-6(5)"              ,
+    251.900495 : "CH3OH v t=0 4(3,2)-4(2,3) +-"     ,
+    251.825770 : "SO 3Σ v=0 5(6)-4(5)"              ,
+    251.2105851 : "SO2 v=0 8(3,5)-8(2,6)"            ,
+    250.816954 : "NO J=5/2-3/2, Ω=1/2-, F3/2-1/2"  ,
+    330.5879653 : "13CO J=3-2",
+    345.7959899 : "12CO J=3-2"
+    #249.000000 : "Continuum"
+}
 
 
 
