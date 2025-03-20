@@ -1,28 +1,22 @@
 [build-system]
-requires = ["setuptools>=45", "wheel"]
+requires = ["setuptools>=45",  "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "casa_cube"
-version = "0.1.0"
-description = "Package to plot data cube from CASA in Python"
-readme = "README.md"
-requires-python = ">=3.6"
-license = {text = "MIT"}
 authors = [
     {name = "Christophe Pinte", email = "christophe.pinte@univ-grenoble-alpes.fr"}
 ]
+description = "Package to plot data cube from CASA in Python"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
 keywords = ["astronomy", "CASA", "data-cube", "visualization"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.6",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
+    "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Astronomy",
+    "Topic :: Scientific/Engineering :: Physics",
 ]
 dependencies = [
     "numpy",
@@ -30,10 +24,13 @@ dependencies = [
     "astropy",
 ]
 
+dynamic = ["version"]
+
 [project.urls]
 Homepage = "http://github.com/cpinte/casa_cube"
 Repository = "http://github.com/cpinte/casa_cube.git"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-packages = ["casa_cube"] 
+packages = ["casa_cube"]
+license-files = []
