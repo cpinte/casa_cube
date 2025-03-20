@@ -13,7 +13,7 @@ from matplotlib.patches import Ellipse
 from scipy import ndimage
 from warnings import catch_warnings, simplefilter
 
-FWHM_to_sigma = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2)))
+FWHM_to_sigma = 1.0 / np.sqrt(8.0 * np.log(2)) # 1/2.355  FWHM = sigma * sqrt(8ln(2))
 arcsec = np.pi / 648000
 default_cmap = cmr.arctic
 
@@ -299,6 +299,64 @@ class Cube:
         fits.writeto(os.path.normpath(os.path.expanduser(filename)),image.data, header, **kwargs)
 
         return
+
+
+    def tapered_fits(self, filename, taper=None, **kwargs):
+        # Create a tapered version of a fits file
+
+        if taper is None:
+            raise ValueError("taper is needed")
+
+        image = deepcopy(self.image)
+        header = deepcopy(self.header)
+
+        ndim = image.ndim
+        nv=image.shape[0]
+
+        if taper < self.bmaj:
+            print("taper is smaller than bmaj=", self.bmaj)
+            print("No taper applied")
+        else:
+            delta_bmaj = np.sqrt(taper ** 2 - self.bmaj ** 2)
+            bmaj = taper
+
+            delta_bmin = np.sqrt(taper ** 2 - self.bmin ** 2)
+            bmin = taper
+
+            sigma_x = delta_bmin / self.pixelscale * FWHM_to_sigma  # in pixels
+            sigma_y = delta_bmaj / self.pixelscale * FWHM_to_sigma  # in pixels
+
+            print("beam = ", self.bmaj, self.bmin)
+            print("tapper =", delta_bmaj, delta_bmin, self.bpa)
+            print("beam = ",np.sqrt(self.bmaj ** 2 + delta_bmaj ** 2),np.sqrt(self.bmin ** 2 + delta_bmin ** 2))
+
+            beam = Gaussian2DKernel(sigma_x, sigma_y, self.bpa * np.pi / 180)
+
+            for iv in range(nv):
+                im = deepcopy(self.image[iv,:,:])
+                im = convolve_fft(im, beam)
+
+                # Correcting for beam area. Tested ok
+                im *= taper**2/(self.bmin * self.bmaj)
+
+                image[iv,:,:] = im
+
+            header['BMAJ'] = taper/3600
+            header['BMIN'] = taper/3600
+
+            fits.writeto(os.path.normpath(os.path.expanduser(filename)),image.data, header, **kwargs, overwrite=True)
+
+        return
+
+
+    def sensitivity(self):
+        # Sensitivity in K
+
+        self.get_std()
+        T = self._Jybeam_to_Tb(self.std,RJ=True)
+
+        return T
+
 
     def writeto(filename, image, header, **kwargs):
         fits.writeto(os.path.normpath(os.path.expanduser(filename)),image.data, header, **kwargs)
@@ -949,8 +1007,8 @@ class Cube:
 
 
     def get_std(self,taper=0):
-        im1 =self.image[0,:,:]
-        im2 =self.image[-1,:,:]
+        im1 =self.image[0,0:30,0:30]
+        im2 =self.image[-1,0:30,0:30]
 
         # This is ugly copy and paste
         # --- Convolution by taper
@@ -997,6 +1055,10 @@ class Cube:
         # compute std deviation in image, assumes that no primary beam correction has been applied
         self.std = np.nanstd([im1,im2])
 
+        print("Std=",self.std)
+
+        return
+
     # -- Functions to deal the synthesized beam.
     def _beam_area(self):
         """Beam area in arcsec^2"""
@@ -1018,15 +1080,17 @@ class Cube:
         """Returns the beam parameters in ("), ("), (deg)."""
         return self.bmaj, self.bmin, self.bpa
 
-    def _Jybeam_to_Tb(self, im):
+    def _Jybeam_to_Tb(self, im, RJ=False):
         """Convert flux converted from Jy/beam to K using full Planck law."""
         im2 = np.nan_to_num(im)
         nu = self.restfreq
 
-        exp_m1 = 1e26 * self._beam_area_str() * 2.0 * sc.h * nu ** 3 / (sc.c ** 2 * abs(im2))
-
-        hnu_kT = np.log1p(exp_m1 + 1e-10)
-        Tb = sc.h * nu / (sc.k * hnu_kT)
+        if RJ:
+            Tb = abs(im2) * sc.c**2 / (2*nu**2*sc.k * 1e26 * self._beam_area_str())
+        else:
+            exp_m1 = 1e26 * self._beam_area_str() * 2.0 * sc.h * nu ** 3 / (sc.c ** 2 * abs(im2))
+            hnu_kT = np.log1p(exp_m1 + 1e-10)
+            Tb = sc.h * nu / (sc.k * hnu_kT)
 
         return np.ma.where(im2 >= 0.0, Tb, -Tb)
 
