@@ -5,4 +5,5 @@ matplotlib>=3.4.0
 astropy>=4.2.0
 scipy>=1.7.0
 cmasher>=1.6.0
-numpydoc>=1.1.0 
+numpydoc>=1.1.0
+astroquery>=0.4.5
