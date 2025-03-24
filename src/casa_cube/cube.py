@@ -19,6 +19,31 @@ default_cmap = cmr.arctic
 
 
 class Cube:
+    """
+    A class to handle astronomy data cubes. This class provides functionality to read, manipulate,
+    and analyze 3D FITS data cubes commonly used in (radio) astronomy.
+
+    The cube data is expected to have 3 dimensions:
+    - Two spatial dimensions (RA, Dec)
+    - One spectral dimension (frequency or velocity)
+
+    The class provides methods for:
+    - Reading FITS files
+    - Basic cube manipulation (cropping, smoothing, etc.)
+    - Moment map generation
+    - Spectral analysis
+    - Visualization
+
+    Attributes:
+        filename (str): Path to the input FITS file
+        header (astropy.io.fits.Header): FITS header information
+        data (numpy.ndarray): 3D array containing the cube data
+        wcs (astropy.wcs.WCS): World Coordinate System information
+        object (str): Name of the astronomical object
+        unit (str): Units of the data values
+
+    """
+
     def __init__(self, filename, only_header=False, correct_fct=None, unit=None, pixelscale=None, restfreq=None, zoom=None, **kwargs):
         """
         Initialize a Cube object.

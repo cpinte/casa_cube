@@ -9,32 +9,7 @@ Cube
    :undoc-members:
    :show-inheritance:
 
-   .. rubric:: Methods
-
-   .. autosummary::
-      :nosignatures:
-
-      ~Cube.__init__
-      ~Cube.plot
-      ~Cube.plot_channels
-      ~Cube.plot_line
-      ~Cube.get_line_profile
-      ~Cube.get_moment_map
-      ~Cube.get_high_pass_filter_map
-      ~Cube.get_fwhm
-      ~Cube.get_vturb
-      ~Cube.get_std
-      ~Cube.make_cut
-      ~Cube.explore
-      ~Cube.cutout
-      ~Cube.tapered_fits
-
-   .. rubric:: Properties
-
-   .. autosummary::
-      :nosignatures:
-
-      ~Cube.beam
+    .. automethod:: __init__
 
 Constants
 ---------
