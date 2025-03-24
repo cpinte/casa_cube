@@ -1,5 +1,5 @@
 Welcome to Casa Cube's documentation!
-================================
+=====================================
 
 Casa Cube is a Python package for handling and analyzing radio interferometry data cubes, particularly focused on ALMA data. It provides tools for visualization, analysis, and manipulation of spectral line data cubes.
 
@@ -13,7 +13,7 @@ Casa Cube is a Python package for handling and analyzing radio interferometry da
    examples
 
 Installation
------------
+------------
 
 You can install Casa Cube using pip:
 
@@ -46,4 +46,4 @@ Indices and tables
 
 * :ref:`genindex`
 * :ref:`modindex`
-* :ref:`search` 
+* :ref:`search`

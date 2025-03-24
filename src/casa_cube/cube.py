@@ -1030,6 +1030,14 @@ class Cube:
         """
         Calculate the moment map of the cube.
 
+        We use the same convention as CASA : moment 8 is peak flux, moment 9 is peak velocity
+        This returns the moment maps in physical units, ie:
+        - M0 is the integrated line flux (Jy/beam . km/s)
+        - M1 is the average velocity (km/s)
+        - M2 is the velocity dispersion (km/s)
+        - M8 is the peak intensity
+        - M9 is the velocity of the peak
+
         Args:
             moment (int): The moment to calculate.
             v0 (float): The central velocity.
@@ -1038,14 +1046,6 @@ class Cube:
             threshold (float): The threshold for the moment map.
             iv_support (list): The indices of the velocity channels to support.
             v_minmax (list): The minimum and maximum velocities to plot.
-
-        We use the same convention as CASA : moment 8 is peak flux, moment 9 is peak velocity
-        This returns the moment maps in physical units, ie:
-         - M0 is the integrated line flux (Jy/beam . km/s)
-         - M1 is the average velocity (km/s)
-         - M2 is the velocity dispersion (km/s)
-         - M8 is the peak intensity
-         - M9 is the velocity of the peak
         """
 
         if v0 is None:

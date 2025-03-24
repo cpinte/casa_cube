@@ -1,10 +1,10 @@
 API Reference
-============
+=============
 
-Core Classes
------------
+Cube
+----
 
-.. automodule:: casa_cube.Cube
+.. autoclass:: casa_cube.Cube
    :members:
    :undoc-members:
    :show-inheritance:
@@ -37,7 +37,7 @@ Core Classes
       ~Cube.beam
 
 Constants
---------
+---------
 
 .. data:: casa_cube.FWHM_to_sigma
    :annotation: = 1.0 / np.sqrt(8.0 * np.log(2))
@@ -52,6 +52,6 @@ Constants
    :annotation: Dictionary of molecular line frequencies and names
 
 Utility Functions
----------------
+-----------------
 
 .. autofunction:: casa_cube.add_colorbar

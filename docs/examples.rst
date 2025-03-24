@@ -2,7 +2,7 @@ Examples
 ========
 
 Basic Analysis of a CO Cube
--------------------------
+---------------------------
 
 This example shows how to perform basic analysis on a CO data cube:
 
@@ -33,7 +33,7 @@ This example shows how to perform basic analysis on a CO data cube:
    plt.show()
 
 Channel Map Analysis
------------------
+--------------------
 
 This example demonstrates how to create and analyze channel maps:
 
@@ -51,8 +51,8 @@ This example demonstrates how to create and analyze channel maps:
 
    # Plot with custom parameters
    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-   
-   cube.plot(moment=0, ax=ax1, threshold=0.1, 
+
+   cube.plot(moment=0, ax=ax1, threshold=0.1,
              cmap='viridis', colorbar=True)
    ax1.set_title('Integrated Intensity')
 
@@ -64,7 +64,7 @@ This example demonstrates how to create and analyze channel maps:
    plt.show()
 
 High-Pass Filtering
------------------
+-------------------
 
 This example shows how to apply high-pass filtering to remove large-scale structures:
 
@@ -79,18 +79,18 @@ This example shows how to apply high-pass filtering to remove large-scale struct
 
    # Plot original and filtered maps
    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-   
+
    cube.plot(moment=0, ax=ax1, cmap='viridis')
    ax1.set_title('Original')
 
    ax2.imshow(filtered_map, cmap='viridis', origin='lower')
    ax2.set_title('High-Pass Filtered')
-   
+
    plt.tight_layout()
    plt.show()
 
 Advanced Analysis
---------------
+-----------------
 
 This example demonstrates some advanced features:
 
@@ -107,13 +107,13 @@ This example demonstrates some advanced features:
 
    # Plot results
    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-   
+
    ax1.imshow(Tb, cmap='viridis', origin='lower')
    ax1.set_title('Brightness Temperature')
-   
+
    ax2.imshow(vturb, cmap='viridis', origin='lower')
    ax2.set_title('Turbulent Velocity')
-   
+
    plt.tight_layout()
    plt.show()
 
@@ -123,4 +123,4 @@ This example demonstrates some advanced features:
    plt.xlabel('Position')
    plt.ylabel('Intensity')
    plt.title('Cut Through Cube')
-   plt.show() 
+   plt.show()

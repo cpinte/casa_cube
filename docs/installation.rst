@@ -1,8 +1,8 @@
 Installation Guide
-=================
+==================
 
 Requirements
------------
+------------
 
 Casa Cube requires the following Python packages:
 
@@ -19,7 +19,7 @@ You can install these dependencies using pip:
    pip install numpy matplotlib astropy scipy cmasher
 
 Installing Casa Cube
-------------------
+--------------------
 
 The easiest way to install Casa Cube is through pip:
 
@@ -36,7 +36,7 @@ For development installation:
    pip install -e .
 
 Verifying the Installation
-------------------------
+--------------------------
 
 You can verify the installation by running Python and importing the package:
 
@@ -46,7 +46,7 @@ You can verify the installation by running Python and importing the package:
    >>> # If no error occurs, the installation was successful
 
 Troubleshooting
---------------
+---------------
 
 If you encounter any issues during installation:
 
@@ -55,4 +55,4 @@ If you encounter any issues during installation:
 3. Check if you have write permissions in your Python environment
 4. If using a virtual environment, make sure it's activated before installation
 
-For additional help, please open an issue on the GitHub repository. 
+For additional help, please open an issue on the GitHub repository.

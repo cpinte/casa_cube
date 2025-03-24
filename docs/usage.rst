@@ -2,7 +2,7 @@ Usage Guide
 ===========
 
 Basic Usage
-----------
+-----------
 
 The main class in Casa Cube is the `Cube` class, which handles FITS data cubes. Here's a basic example:
 
@@ -28,7 +28,7 @@ The main class in Casa Cube is the `Cube` class, which handles FITS data cubes. 
    )
 
 Working with Channel Maps
------------------------
+-------------------------
 
 You can plot multiple channels at once using the `plot_channels` method:
 
@@ -41,7 +41,7 @@ You can plot multiple channels at once using the `plot_channels` method:
    cube.plot_channels(vmin=-10, vmax=10)
 
 Calculating Moments
------------------
+-------------------
 
 Casa Cube provides methods to calculate various moments:
 
@@ -63,7 +63,7 @@ Casa Cube provides methods to calculate various moments:
    m9 = cube.get_moment_map(moment=9)
 
 Working with Line Profiles
-------------------------
+--------------------------
 
 You can analyze line profiles:
 
@@ -78,7 +78,7 @@ You can analyze line profiles:
    cube.plot_line(x_axis="freq")      # Plot vs frequency
 
 High-Pass Filtering
------------------
+-------------------
 
 You can apply high-pass filtering to remove large-scale structures:
 
@@ -91,7 +91,7 @@ You can apply high-pass filtering to remove large-scale structures:
    )
 
 Unit Conversions
---------------
+----------------
 
 Casa Cube can convert between different units:
 
@@ -104,7 +104,7 @@ Casa Cube can convert between different units:
    Tb_rj = cube._Jybeam_to_Tb(flux_map, RJ=True)
 
 Working with Beams
-----------------
+------------------
 
 You can access and manipulate beam information:
 
@@ -120,7 +120,7 @@ You can access and manipulate beam information:
 
 
 Working with scattered light images
-----------------
+-----------------------------------
 
 You can specify the pixelscale if it is missing in the header
 
@@ -131,7 +131,7 @@ You can specify the pixelscale if it is missing in the header
 
 
 Plotting with  RA and Dec on axes instead of relative offsets from image centre
-----------------
+-------------------------------------------------------------------------------
 
 .. code-block:: python
 
@@ -142,7 +142,7 @@ Plotting with  RA and Dec on axes instead of relative offsets from image centre
 
 
 Advanced Features
----------------
+-----------------
 
 * Tapering: Apply Gaussian tapering to the data
 * Dynamic range: Control the dynamic range of plots
