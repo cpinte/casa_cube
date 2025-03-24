@@ -44,7 +44,7 @@ class Cube:
 
     """
 
-    def __init__(self, filename, only_header=False, correct_fct=None, unit=None, pixelscale=None, restfreq=None, zoom=None, **kwargs):
+    def __init__(self, filename, only_header=False, correct_factor=None, unit=None, pixelscale=None, restfreq=None, zoom=None, **kwargs):
         """
         Initialize a Cube object.
 
@@ -53,16 +53,16 @@ class Cube:
             only_header (bool): If True, only read the header and not the data.
 
         self.filename = os.path.normpath(os.path.expanduser(filename))
-        self._read(**kwargs, only_header=only_header, correct_fct=correct_fct, unit=unit, pixelscale=pixelscale, restfreq=restfreq, zoom=zoom)
+        self._read(**kwargs, only_header=only_header, correct_factor=correct_factor, unit=unit, pixelscale=pixelscale, restfreq=restfreq, zoom=zoom)
         """
 
-    def _read(self, only_header=False, correct_fct=None, unit=None, pixelscale=None, instrument=None, restfreq=None, zoom=None):
+    def _read(self, only_header=False, correct_factor=None, unit=None, pixelscale=None, instrument=None, restfreq=None, zoom=None):
         """
         Read the FITS file and initialize the Cube object.
 
         Args:
             only_header (bool): If True, only read the header and not the data.
-            correct_fct (array-like): Array of correction factors for the data.
+            correct_factor (array-like): Array of correction factors for the data.
             unit (str): The unit of the data.
             pixelscale (float): The pixel scale in arcsec.
             instrument (str): The instrument used to acquire the data.
@@ -242,8 +242,8 @@ class Cube:
                 if self.image.ndim == 3 and self.nv == 1:
                     self.image = self.image[0, :, :]
 
-                if correct_fct is not None:
-                    self.image *= correct_fct[:,np.newaxis, np.newaxis]
+                if correct_factor is not None:
+                    self.image *= correct_factor[:,np.newaxis, np.newaxis]
 
                 if zoom is not None:
                     print('Original size = ', self.image.shape)
