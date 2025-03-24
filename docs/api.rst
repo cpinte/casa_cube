@@ -4,7 +4,7 @@ API Reference
 Cube
 ----
 
-.. autoclass:: casa_cube.Cube
+.. automodule:: casa_cube.Cube
    :members:
    :undoc-members:
    :show-inheritance:
