@@ -4,12 +4,11 @@ API Reference
 Cube
 ----
 
-.. automodule:: casa_cube.cube.Cube
+.. autoclass:: casa_cube.cube.Cube
    :members:
    :undoc-members:
    :show-inheritance:
 
-    .. automethod:: __init__
 
 Constants
 ---------
