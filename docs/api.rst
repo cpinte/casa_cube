@@ -4,7 +4,7 @@ API Reference
 Core Classes
 -----------
 
-.. autoclass:: casa_cube.Cube
+.. automodule:: casa_cube.Cube
    :members:
    :undoc-members:
    :show-inheritance:
@@ -54,4 +54,4 @@ Constants
 Utility Functions
 ---------------
 
-.. autofunction:: casa_cube.add_colorbar 
+.. autofunction:: casa_cube.add_colorbar
