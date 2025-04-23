@@ -51,10 +51,11 @@ class Cube:
         Args:
             filename (str): The path to the FITS file containing the cube data.
             only_header (bool): If True, only read the header and not the data.
+        """
 
         self.filename = os.path.normpath(os.path.expanduser(filename))
         self._read(**kwargs, only_header=only_header, correct_factor=correct_factor, unit=unit, pixelscale=pixelscale, restfreq=restfreq, zoom=zoom)
-        """
+
 
     def _read(self, only_header=False, correct_factor=None, unit=None, pixelscale=None, instrument=None, restfreq=None, zoom=None):
         """
@@ -463,7 +464,7 @@ class Cube:
         no_vlabel=False,
         title=None,
         alpha=1.0,
-        interpolation=None,
+        interpolation="bicubic",
         resample=0,
         bmaj=None,
         bmin=None,
