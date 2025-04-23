@@ -140,9 +140,9 @@ class Cube:
                     pixelscale = 12.255e-3
                 elif instrument == "IRDIS_H3":
                     pixelscale = 12.250e-3
-                elif instrument == "IRDIS_K2":
+                elif instrument == "IRDIS_K1":
                     pixelscale = 12.267e-3
-                elif instrument == "IRDIS_K3":
+                elif instrument == "IRDIS_K2":
                     pixelscale = 12.263e-3
                 elif instrument == "IRDIS_BB_J":
                     pixelscale = 12.263e-3
