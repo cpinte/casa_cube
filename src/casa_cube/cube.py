@@ -845,7 +845,7 @@ class Cube:
             ax.set_ylabel(ylabel)
 
         if title is not None:
-            axe.set_title(title)
+            ax.set_title(title)
 
         # -- Color bar
         if colorbar:
