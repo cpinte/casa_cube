@@ -845,7 +845,7 @@ class Cube:
                 zorder=zorder
             )
         elif plot_type=="contour":
-            imagee = ax.contour(
+            image = ax.contour(
                 im,
                 extent=extent,
                 origin='lower',
@@ -882,7 +882,7 @@ class Cube:
             ax.set_ylabel(ylabel)
 
         if title is not None:
-            axe.set_title(title)
+            ax.set_title(title)
 
         # -- Color bar
         if colorbar:
