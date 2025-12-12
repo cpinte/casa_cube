@@ -501,6 +501,7 @@ class Cube:
         normalise=False,
         dynamic_range=None,
         hpf=False,
+        RJ=True,
         **kwargs
     ):
         """
@@ -674,7 +675,7 @@ class Cube:
 
 
         if Tb:
-            im = self._Jybeam_to_Tb(im)
+            im = self._Jybeam_to_Tb(im,RJ=RJ)
             unit = "K"
             #if unit == "Jy/beam":
             #    im = self._Jybeam_to_Tb(im)
