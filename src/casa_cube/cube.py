@@ -119,32 +119,32 @@ class Cube:
                 except KeyError:
                    self.pixelscale = abs(hdu[0].header['CD2_2']) * 3600
 
-                # Check for CD matrix keywords for rotation
-                if 'CD1_1' in hdu[0].header and 'CD1_2' in hdu[0].header and 'CD2_1' in hdu[0].header and 'CD2_2' in hdu[0].header:
-                    CD1_1 = hdu[0].header['CD1_1']
-                    CD1_2 = hdu[0].header['CD1_2']
-                    CD2_1 = hdu[0].header['CD2_1']
-                    CD2_2 = hdu[0].header['CD2_2']
+                # Check for CD matrix keywords for pixel scale and rotation
+                cd_keys = {'CD1_1', 'CD1_2', 'CD2_1', 'CD2_2'}
+                has_cd_matrix = cd_keys.issubset(hdu[0].header)
 
-                    # Calculate pixel scale from CD matrix (in degrees, convert to arcsec)
-                    pix_scale_y = np.sqrt(CD2_1**2 + CD2_2**2) * 3600.0  # arcsec
-                    pix_scale_x = np.sqrt(CD1_1**2 + CD1_2**2) * 3600.0  # arcsec
-                    # Use y-scale (typically they're similar)
-                    self.pixelscale = pix_scale_y
+                if has_cd_matrix:
+                   CD1_1 = hdu[0].header['CD1_1']
+                   CD1_2 = hdu[0].header['CD1_2']
+                   CD2_1 = hdu[0].header['CD2_1']
+                   CD2_2 = hdu[0].header['CD2_2']
 
-                    # Calculate rotation angle: position angle of north relative to image y-axis
-                    # PA = arctan2(CD1_2, CD2_2) gives the angle of the y-axis east of north
-                    # To align north with y-axis, we rotate by -PA
-                    self.wcs_rotation = -np.rad2deg(np.arctan2(CD1_2, CD2_2))
+                   # Calculate pixel scale from CD matrix (in degrees, convert to arcsec)
+                   pix_scale_y = np.sqrt(CD2_1**2 + CD2_2**2) * 3600.0  # arcsec
+                   pix_scale_x = np.sqrt(CD1_1**2 + CD1_2**2) * 3600.0  # arcsec
+                   # Use y-scale (typically they're similar)
+                   self.pixelscale = pix_scale_y
 
-                    # If ORIENTAT is present, use it (it's more direct)
-                    if 'ORIENTAT' in hdu[0].header:
-                        # ORIENTAT is position angle of image y axis (deg. e of n)
-                        # To align north with y-axis, rotate by -ORIENTAT
-                        self.wcs_rotation = -hdu[0].header['ORIENTAT']
-                elif 'ORIENTAT' in hdu[0].header:
-                    # ORIENTAT found but no CD matrix
-                    self.wcs_rotation = -hdu[0].header['ORIENTAT']
+                # Determine rotation: ORIENTAT is preferred over CD matrix
+                if 'ORIENTAT' in hdu[0].header:
+                   # ORIENTAT is position angle of image y axis (deg. e of n)
+                   # To align north with y-axis, rotate by -ORIENTAT
+                   self.wcs_rotation = -hdu[0].header['ORIENTAT']
+                elif has_cd_matrix:
+                   # Calculate rotation angle from CD matrix if ORIENTAT is not present
+                   # PA = arctan2(CD1_2, CD2_2) gives the angle of the y-axis east of north
+                   # To align north with y-axis, we rotate by -PA
+                   self.wcs_rotation = -np.rad2deg(np.arctan2(CD1_2, CD2_2))
 
                 self.cx = hdu[0].header['CRPIX1']
                 self.cy = hdu[0].header['CRPIX2']
@@ -224,9 +224,9 @@ class Cube:
                         self.CUNIT3 = hdu[0].header['CUNIT3']
                     except:
                         self.CUNIT3 = None
-                    if self.CUNIT3 == "M/S" or self.CUNIT3 == "m/s":
+                    if self.CUNIT3 and self.CUNIT3.upper() == "M/S":
                         factor = 1e-3
-                    elif self.CUNIT3 == "KM/S":
+                    elif self.CUNIT3 and self.CUNIT3.upper() == "KM/S":
                         factor = 1
                     else:
                         if self.CDELT3 < 5: # assuming km/s
@@ -932,7 +932,7 @@ class Cube:
                     ax.text(
                         x_vlabel,
                         y_vlabel,
-                        f"v={self.velocity[iv]+v_offset:<4.2f}" + r"$\,$km/s",
+                        f"v={self.velocity[iv]+v_offset:<4.2f}" r"$\,$km/s",
                         horizontalalignment='center',
                         color=vlabel_color,
                         transform=ax.transAxes,
@@ -942,7 +942,7 @@ class Cube:
                     ax.text(
                         x_vlabel,
                         y_vlabel,
-                        r"$\Delta$v=" + f"{self.velocity[iv] -v0:<4.2f}" + r"$\,$km/s",
+                        r"$\Delta$v=" f"{self.velocity[iv] -v0:<4.2f}" r"$\,$km/s",
                         horizontalalignment='center',
                         color="white",
                         transform=ax.transAxes,
