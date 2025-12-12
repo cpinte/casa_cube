@@ -110,11 +110,42 @@ class Cube:
             # pixel info
             self.nx = hdu[0].header['NAXIS1']
             self.ny = hdu[0].header['NAXIS2']
+
+            # Check for CD matrix (WCS rotation) or use CDELT
+            self.wcs_rotation = 0.0  # rotation angle in degrees to align north with y-axis
             try:
                 try:
                    self.pixelscale = hdu[0].header['CDELT2'] * 3600 # arcsec
                 except KeyError:
                    self.pixelscale = abs(hdu[0].header['CD2_2']) * 3600
+
+                # Check for CD matrix keywords for pixel scale and rotation
+                cd_keys = {'CD1_1', 'CD1_2', 'CD2_1', 'CD2_2'}
+                has_cd_matrix = cd_keys.issubset(hdu[0].header)
+
+                if has_cd_matrix:
+                   CD1_1 = hdu[0].header['CD1_1']
+                   CD1_2 = hdu[0].header['CD1_2']
+                   CD2_1 = hdu[0].header['CD2_1']
+                   CD2_2 = hdu[0].header['CD2_2']
+
+                   # Calculate pixel scale from CD matrix (in degrees, convert to arcsec)
+                   pix_scale_y = np.sqrt(CD2_1**2 + CD2_2**2) * 3600.0  # arcsec
+                   pix_scale_x = np.sqrt(CD1_1**2 + CD1_2**2) * 3600.0  # arcsec
+                   # Use y-scale (typically they're similar)
+                   self.pixelscale = pix_scale_y
+
+                # Determine rotation: ORIENTAT is preferred over CD matrix
+                if 'ORIENTAT' in hdu[0].header:
+                   # ORIENTAT is position angle of image y axis (deg. e of n)
+                   # To align north with y-axis, rotate by -ORIENTAT
+                   self.wcs_rotation = -hdu[0].header['ORIENTAT']
+                elif has_cd_matrix:
+                   # Calculate rotation angle from CD matrix if ORIENTAT is not present
+                   # PA = arctan2(CD1_2, CD2_2) gives the angle of the y-axis east of north
+                   # To align north with y-axis, we rotate by -PA
+                   self.wcs_rotation = -np.rad2deg(np.arctan2(CD1_2, CD2_2))
+
                 self.cx = hdu[0].header['CRPIX1']
                 self.cy = hdu[0].header['CRPIX2']
                 self.x_ref = hdu[0].header['CRVAL1']  # coordinate
@@ -193,9 +224,9 @@ class Cube:
                         self.CUNIT3 = hdu[0].header['CUNIT3']
                     except:
                         self.CUNIT3 = None
-                    if self.CUNIT3 == "M/S":
+                    if self.CUNIT3 and self.CUNIT3.upper() == "M/S":
                         factor = 1e-3
-                    elif self.CUNIT3 == "KM/S":
+                    elif self.CUNIT3 and self.CUNIT3.upper() == "KM/S":
                         factor = 1
                     else:
                         if self.CDELT3 < 5: # assuming km/s
@@ -786,6 +817,12 @@ class Cube:
             kernel =  Gaussian2DKernel(sigma, sigma, 0)
             im -= convolve_fft(im, kernel)
 
+        # --- Apply WCS rotation if needed (to align north with y-axis)
+        if hasattr(self, 'wcs_rotation') and abs(self.wcs_rotation) > 1e-6:
+            # Rotate image to align north with y-axis
+            # scipy.ndimage.rotate rotates counter-clockwise for positive angles
+            im = ndimage.rotate(im, self.wcs_rotation, reshape=False, order=1, mode='constant', cval=0.0)
+
         if plot_type=="imshow":
             image = ax.imshow(
                 im,
@@ -809,7 +846,7 @@ class Cube:
                 zorder=zorder
             )
         elif plot_type=="contour":
-            imagee = ax.contour(
+            image = ax.contour(
                 im,
                 extent=extent,
                 origin='lower',
@@ -846,7 +883,7 @@ class Cube:
             ax.set_ylabel(ylabel)
 
         if title is not None:
-            axe.set_title(title)
+            ax.set_title(title)
 
         # -- Color bar
         if colorbar:
@@ -861,14 +898,14 @@ class Cube:
 
             if colorbar_label:
                 if moment == 0:
-                    cb.set_label("Flux (" + formatted_unit + "$\,$km$\,$s$^{-1}$)")
+                    cb.set_label("Flux (" + formatted_unit + r"$\,$km$\,$s$^{-1}$)")
                 elif moment in [1, 9]:
-                    cb.set_label("Velocity (km$\,$s$^{-1})$")
+                    cb.set_label(r"Velocity (km$\,$s$^{-1})$")
                 elif moment == 2:
-                    cb.set_label("Velocity dispersion (km$\,$s$^{-1}$)")
+                    cb.set_label(r"Velocity dispersion (km$\,$s$^{-1}$)")
                 else:
                     if Tb:
-                        cb.set_label("T$_\mathrm{B}$ (" + formatted_unit + ")")
+                        cb.set_label(r"T$_\mathrm{B}$ (" + formatted_unit + ")")
                     else:
                         if quantity_name is None:
                             quantity_name = "Flux"
@@ -896,7 +933,7 @@ class Cube:
                     ax.text(
                         x_vlabel,
                         y_vlabel,
-                        f"v={self.velocity[iv]+v_offset:<4.2f}$\,$km/s",
+                        f"v={self.velocity[iv]+v_offset:<4.2f}" r"$\,$km/s",
                         horizontalalignment='center',
                         color=vlabel_color,
                         transform=ax.transAxes,
@@ -906,7 +943,7 @@ class Cube:
                     ax.text(
                         x_vlabel,
                         y_vlabel,
-                        f"$\Delta$v={self.velocity[iv] -v0:<4.2f}$\,$km/s",
+                        r"$\Delta$v=" f"{self.velocity[iv] -v0:<4.2f}" r"$\,$km/s",
                         horizontalalignment='center',
                         color="white",
                         transform=ax.transAxes,
