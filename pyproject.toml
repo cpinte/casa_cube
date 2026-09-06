@@ -22,6 +22,9 @@ dependencies = [
     "numpy",
     "matplotlib",
     "astropy",
+    "cmasher",
+    "scipy",
+    "astroquery"
 ]
 
 dynamic = ["version"]
